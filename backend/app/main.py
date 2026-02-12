@@ -1,0 +1,70 @@
+import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from app.config import settings
+from app.database import engine, Base
+
+# Import all models to register them
+from app.models.models import *
+
+# Import routes
+from app.routes import (
+    auth, products, categories, cart, orders, coupons, reviews, wishlist, 
+    addresses, banners, admin, upload,
+    suppliers, b2b_customers, warehouses, purchases, sales, payments
+)
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title="Senapati Hardware API",
+    description="Full-scale E-Commerce API for Senapati Hardware Store",
+    version="1.0.0"
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Static files for uploads
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+
+# Register routers
+app.include_router(auth.router)
+app.include_router(products.router)
+app.include_router(categories.router)
+app.include_router(cart.router)
+app.include_router(orders.router)
+app.include_router(coupons.router)
+app.include_router(reviews.router)
+app.include_router(wishlist.router)
+app.include_router(addresses.router)
+app.include_router(banners.router)
+app.include_router(admin.router)
+app.include_router(upload.router)
+
+# Inventory Management Routes
+app.include_router(suppliers.router)
+app.include_router(b2b_customers.router)
+app.include_router(warehouses.router)
+app.include_router(purchases.router)
+app.include_router(sales.router)
+app.include_router(payments.router)
+
+
+@app.get("/")
+def root():
+    return {"message": "Senapati Hardware API", "version": "1.0.0", "docs": "/docs"}
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
