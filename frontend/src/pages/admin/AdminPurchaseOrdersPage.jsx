@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Eye, Trash2, Search, FileText } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
@@ -46,10 +46,7 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchPOs = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/purchases/purchase-orders', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/purchases/purchase-orders');
       setPos(res.data);
     } catch (error) {
       toast.error('Failed to fetch purchase orders');
@@ -60,10 +57,7 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/suppliers/search?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/suppliers/search?limit=100');
       setRawSuppliers(res.data);
       setSuppliers(res.data.map(s => ({
         id: s.id,
@@ -91,10 +85,7 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/warehouses/search?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/warehouses/search?limit=100');
       setWarehouses(res.data.map(w => ({
         id: w.id,
         value: w.id,
@@ -107,12 +98,7 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchProducts = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      console.log('[PO Page] Fetching products with token:', token ? 'Present' : 'Missing');
-
-      const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/products?page_size=100');
 
       console.log('[PO Page] Products API Response:', res.data);
 
@@ -134,10 +120,7 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchCategories = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/categories', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/categories');
       setCategories(res.data || []);
     } catch (error) {
       console.error('Failed to fetch categories');
@@ -188,9 +171,7 @@ export default function AdminPurchaseOrdersPage() {
         is_active: true,
         is_featured: false
       };
-      const res = await axios.post('http://localhost:8000/api/products', productData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post('/products', productData);
       toast.success('Product created');
       fetchProducts();
       setShowProductModal(false);
@@ -282,20 +263,23 @@ export default function AdminPurchaseOrdersPage() {
     try {
       const token = sessionStorage.getItem('token');
 
+      // Clean up data
       const data = {
         ...formData,
-        po_number: formData.po_number.toUpperCase()
+        po_number: formData.po_number.toUpperCase(),
+        warehouse_id: formData.warehouse_id || null, // Convert empty string to null
+        expected_delivery_date: formData.expected_delivery_date || null, // Convert empty string to null
+        items: formData.items.map(item => ({
+          ...item,
+          product_id: item.product_id || null // Protective null
+        }))
       };
 
       if (editingPO) {
-        await axios.put(`http://localhost:8000/api/purchases/purchase-orders/${editingPO.id}`, data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/purchases/purchase-orders/${editingPO.id}`, data);
         toast.success('Purchase order updated successfully');
       } else {
-        await axios.post('http://localhost:8000/api/purchases/purchase-orders', data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post('/purchases/purchase-orders', data);
         toast.success('Purchase order created successfully');
       }
 
@@ -318,6 +302,7 @@ export default function AdminPurchaseOrdersPage() {
       discount_percentage: 0,
       freight_charges: 0,
       other_charges: 0,
+      gst_type: 'cgst_sgst',
       notes: '',
       terms_conditions: '',
       items: [{ product_id: '', quantity: 1, unit_price: 0, discount_percentage: 0, tax_percentage: 18, notes: '' }]
@@ -325,8 +310,11 @@ export default function AdminPurchaseOrdersPage() {
   };
 
   const filteredPOs = pos.filter(po => {
-    const matchesSearch = po.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      po.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const poNum = (po.po_number || '').toLowerCase();
+    const supplierName = (po.supplier?.name || '').toLowerCase();
+    const query = searchTerm.toLowerCase();
+
+    const matchesSearch = poNum.includes(query) || supplierName.includes(query);
     const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

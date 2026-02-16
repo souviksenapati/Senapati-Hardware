@@ -7,7 +7,8 @@ from app.models.models import (
     PurchaseOrder, PurchaseOrderItem, 
     GoodsReceivedNote, GRNItem,
     PurchaseInvoice, PurchaseInvoiceItem,
-    Product, Supplier, InventoryLog
+    Product, Supplier, InventoryLog,
+    PurchaseOrderStatus
 )
 from app.schemas.schemas import (
     PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse,
@@ -232,6 +233,12 @@ def create_grn(
             )
             db.add(log)
     
+    # Update Purchase Order status
+    if grn.po_id:
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == grn.po_id).first()
+        if po:
+            po.status = PurchaseOrderStatus.RECEIVED
+            
     db.commit()
     db.refresh(db_grn)
     

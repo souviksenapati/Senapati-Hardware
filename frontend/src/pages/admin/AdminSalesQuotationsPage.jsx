@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Eye, Printer, X, CheckCircle } from 'lucide-react';
 import api from '../../api';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
@@ -254,10 +253,7 @@ export default function AdminSalesQuotationsPage() {
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.post('http://localhost:8000/api/b2b-customers', newCustomer, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post('/b2b-customers', newCustomer);
 
       toast.success('Customer created successfully!');
 

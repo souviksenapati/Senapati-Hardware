@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Eye, FileText, Printer } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
@@ -69,10 +69,7 @@ export default function AdminSalesInvoicesPage() {
 
   const fetchInvoices = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/sales/invoices', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/sales/invoices');
       setInvoices(res.data);
     } catch (error) {
       toast.error('Failed to fetch sales invoices');
@@ -83,10 +80,7 @@ export default function AdminSalesInvoicesPage() {
 
   const fetchCustomers = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/b2b-customers/search?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/b2b-customers/search?limit=100');
       setRawCustomers(res.data);
       setCustomers(res.data.map(c => ({
         value: c.id,
@@ -100,10 +94,7 @@ export default function AdminSalesInvoicesPage() {
 
   const fetchSalesOrders = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/sales/orders?limit=100&status=confirmed', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/sales/orders?limit=100&status=confirmed');
       setSalesOrders(res.data.map(so => ({
         value: so.id,
         label: `${so.order_number} (${so.customer?.name || 'Unknown'})`,
@@ -154,10 +145,7 @@ export default function AdminSalesInvoicesPage() {
 
   const fetchProducts = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/products?page_size=100');
       setProducts((res.data.products || []).map(p => ({
         value: p.id,
         label: `${p.name} (${p.sku}) - Stock: ${p.stock} - ₹${p.price}`,
@@ -176,10 +164,7 @@ export default function AdminSalesInvoicesPage() {
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.post('http://localhost:8000/api/b2b-customers', newCustomer, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post('/b2b-customers', newCustomer);
 
       toast.success('Customer created successfully!');
       await fetchCustomers();
@@ -299,9 +284,7 @@ export default function AdminSalesInvoicesPage() {
       };
 
       console.log('Sending invoice data to API...', cleanedData);
-      const response = await axios.post('http://localhost:8000/api/sales/invoices', cleanedData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.post('/sales/invoices', cleanedData);
       console.log('Invoice created successfully:', response.data);
       toast.success('Sales invoice created successfully! Inventory updated.');
       setShowForm(false);
@@ -329,10 +312,7 @@ export default function AdminSalesInvoicesPage() {
 
   const handleUpdateInvoiceStatus = async (invoiceId, status) => {
     try {
-      const token = sessionStorage.getItem('token');
-      await axios.put(`http://localhost:8000/api/sales/invoices/${invoiceId}`, { status }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/sales/invoices/${invoiceId}`, { status });
       toast.success('Invoice status updated');
       fetchInvoices();
     } catch (error) {
@@ -357,9 +337,7 @@ export default function AdminSalesInvoicesPage() {
   const handlePrintInvoice = async (invoice) => {
     let settings = {};
     try {
-      const res = await axios.get('http://localhost:8000/api/admin/settings', {
-        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
-      });
+      const res = await api.get('/admin/settings');
       (res.data || []).forEach(item => { settings[item.key] = item.value; });
     } catch (e) { console.error('Settings load fail', e); }
 

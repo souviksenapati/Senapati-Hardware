@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Plus, Search, Eye, Printer, X, Truck } from 'lucide-react';
 import api from '../../api';
+import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
 export default function AdminSalesOrdersPage() {
@@ -71,15 +72,15 @@ export default function AdminSalesOrdersPage() {
     e.preventDefault();
 
     if (!formData.order_number.trim()) {
-      alert('Please enter order number');
+      toast.error('Please enter order number');
       return;
     }
     if (!formData.customer_id) {
-      alert('Please select a customer');
+      toast.error('Please select a customer');
       return;
     }
     if (formData.items.length === 0 || !formData.items[0].product_id) {
-      alert('Please add at least one item');
+      toast.error('Please add at least one item');
       return;
     }
 
@@ -89,28 +90,26 @@ export default function AdminSalesOrdersPage() {
         order_number: formData.order_number.toUpperCase()
       };
       await api.post('/sales/orders', data);
-      alert('Sales order created successfully! Stock has been reserved.');
+      toast.success('Sales order created successfully! Stock has been reserved.');
       setShowForm(false);
       resetForm();
       fetchOrders();
     } catch (error) {
       console.error('Failed to create order:', error);
-      alert(error.response?.data?.detail || 'Failed to create sales order');
+      toast.error(error.response?.data?.detail || 'Failed to create sales order');
     }
   };
 
   const generateInvoice = async (orderId) => {
-    if (!confirm('Generate sales invoice for this order?')) return;
-
     try {
       // Here you would call an API to convert order to invoice
       // For now, just update status
       await api.put(`/sales/orders/${orderId}`, { status: 'processing' });
-      alert('Order confirmed! You can now generate invoice.');
+      toast.success('Order confirmed! You can now generate invoice.');
       fetchOrders();
     } catch (error) {
       console.error('Failed to update order:', error);
-      alert('Failed to update order status');
+      toast.error('Failed to update order status');
     }
   };
 
@@ -211,12 +210,12 @@ export default function AdminSalesOrdersPage() {
 
   const filteredOrders = orders.filter(ord =>
     ord.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ord.customer?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    ord.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const fetchCustomers = async (query) => {
     const res = await api.get('/b2b-customers/search', { params: { query } });
-    return res.data.map(c => ({ value: c.id, label: `${c.customer_name} (${c.customer_code})` }));
+    return res.data.map(c => ({ value: c.id, label: `${c.name} (${c.customer_code})` }));
   };
 
   const fetchProducts = async (query) => {

@@ -7,7 +7,8 @@ from app.models.models import (
     SalesQuotation, SalesQuotationItem,
     SalesOrder, SalesOrderItem,
     SalesInvoice, SalesInvoiceItem,
-    Product, B2BCustomer, InventoryLog
+    Product, B2BCustomer, InventoryLog,
+    SalesOrderStatus
 )
 from app.schemas.schemas import (
     SalesQuotationCreate, SalesQuotationUpdate, SalesQuotationResponse,
@@ -203,6 +204,7 @@ def create_sales_order(
         customer_id=order.customer_id,
         quotation_id=order.quotation_id,
         warehouse_id=order.warehouse_id,
+        status=SalesOrderStatus.CONFIRMED,  # Set as confirmed so it can be invoiced
         order_date=order.order_date,
         expected_delivery_date=order.expected_delivery_date,
         subtotal=subtotal,
@@ -237,13 +239,16 @@ def create_sales_order(
         )
         db.add(db_item)
         
-        # Check stock availability
+        # Check stock availability and reserve it
         product = db.query(Product).filter(Product.id == item.product_id).first()
-        if product and product.stock < item.quantity:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Insufficient stock for {product.name}. Available: {product.stock}, Required: {item.quantity}"
-            )
+        if product:
+            if product.stock < item.quantity:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Insufficient stock for {product.name}. Available: {product.stock}, Required: {item.quantity}"
+                )
+            # Deduct stock (reserve it)
+            product.stock -= item.quantity
     
     db.commit()
     db.refresh(db_order)

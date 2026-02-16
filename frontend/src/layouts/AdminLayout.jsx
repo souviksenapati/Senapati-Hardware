@@ -10,38 +10,58 @@ import {
 } from 'lucide-react';
 
 const links = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', description: 'Overview of key metrics and statistics', end: true },
-  { to: '/admin/products', icon: Package, label: 'Products', description: 'Manage product catalog and inventory' },
-  { to: '/admin/categories', icon: FolderTree, label: 'Categories', description: 'Organize products into categories' },
-  { to: '/admin/orders', icon: ShoppingCart, label: 'Orders', description: 'View and manage customer orders' },
-  { to: '/admin/customers', icon: Users, label: 'E-commerce Customers', description: 'Manage online store customers' },
-  { to: '/admin/staff', icon: UserCog, label: 'Staff', description: 'Manage staff members and permissions' },
-  { to: '/admin/coupons', icon: Ticket, label: 'Coupons', description: 'Create and manage discount coupons' },
-  { to: '/admin/banners', icon: Image, label: 'Banners', description: 'Manage promotional banners' },
-  { to: '/admin/reviews', icon: Star, label: 'Reviews', description: 'Moderate customer product reviews' },
-  { divider: true, label: 'INVENTORY MANAGEMENT' },
-  { to: '/admin/suppliers', icon: Building, label: 'Suppliers', description: 'Manage supplier information and contacts' },
-  { to: '/admin/b2b-customers', icon: UserCircle, label: 'B2B Customers', description: 'Manage wholesale and B2B customers' },
-  { to: '/admin/grn', icon: PackageCheck, label: 'GRN (Goods Receipt)', description: 'Record incoming inventory and update stock' },
-  { to: '/admin/sales-quotations', icon: FileSignature, label: 'Sales Quotations', description: 'Create price quotations for customers' },
-  { to: '/admin/sales-invoices', icon: FileText, label: 'Sales Invoices', description: 'Generate GST invoices and track payments' },
-  { to: '/admin/inventory', icon: Warehouse, label: 'Stock Levels', description: 'Monitor current stock levels' },
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', description: 'Overview of business performance and key metrics', end: true },
+  { to: '/admin/products', icon: Package, label: 'Products', description: 'Manage your product catalog, prices, and variants' },
+  { to: '/admin/categories', icon: FolderTree, label: 'Categories', description: 'Organize products for easier storefront navigation' },
+  { to: '/admin/orders', icon: ShoppingCart, label: 'E-commerce Orders', description: 'Manage online retail orders received from customers' },
+  { to: '/admin/customers', icon: Users, label: 'E-commerce Customers', description: 'Manage registered retail customer profiles and history' },
+
+  { divider: true, label: 'BUSINESS OPERATIONS' },
   {
     dropdown: true,
-    icon: Settings,
-    label: 'Advanced Features',
-    description: 'Advanced inventory management features',
+    icon: FileText,
+    label: 'Sales Module',
+    description: 'Manage the complete sales lifecycle from lead to invoice',
     items: [
-      { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage warehouse locations and details' },
-      { to: '/admin/purchase-orders', icon: ShoppingBag, label: 'Purchase Orders', description: 'Create and track purchase orders to suppliers' },
-      { to: '/admin/purchase-invoices', icon: Receipt, label: 'Purchase Invoices', description: 'Manage supplier invoices and payments' },
-      { to: '/admin/sales-orders', icon: ClipboardList, label: 'Sales Orders', description: 'Process confirmed customer orders' },
-      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Track all inventory movements' },
+      { to: '/admin/sales-quotations', icon: FileSignature, label: 'Sales Quotations', description: 'Create and track price estimates for B2B prospects' },
+      { to: '/admin/sales-orders', icon: ClipboardList, label: 'Sales Orders', description: 'Manage confirmed B2B orders and stock commitments' },
+      { to: '/admin/sales-invoices', icon: Receipt, label: 'Sales Invoices', description: 'Generate GST-compliant tax invoices and track receivables' },
+      { to: '/admin/b2b-customers', icon: UserCircle, label: 'B2B Customers', description: 'Manage wholesale clients and their credit profiles' },
     ]
   },
-  { divider: true, label: 'SYSTEM' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings', description: 'Configure system settings' },
-  { to: '/admin/reports', icon: BarChart3, label: 'Reports', description: 'View business reports and analytics' },
+  {
+    dropdown: true,
+    icon: ShoppingBag,
+    label: 'Purchase Module',
+    description: 'Manage procurement processes and supplier relationships',
+    items: [
+      { to: '/admin/purchase-orders', icon: ClipboardList, label: 'Purchase Orders', description: 'Issue official orders to suppliers for stock replenishment' },
+      { to: '/admin/grn', icon: PackageCheck, label: 'Goods Receipt (GRN)', description: 'Record physical delivery of goods and update batch stock' },
+      { to: '/admin/purchase-invoices', icon: Receipt, label: 'Purchase Invoices', description: 'Process supplier bills and reconcile with GRN' },
+      { to: '/admin/suppliers', icon: Building, label: 'Suppliers', description: 'Maintain directory of active vendors and sourcing contacts' },
+    ]
+  },
+  {
+    dropdown: true,
+    icon: Warehouse,
+    label: 'Inventory Management',
+    description: 'Monitor stock movement, health and location logistics',
+    items: [
+      { to: '/admin/inventory', icon: Package, label: 'Stock Levels', description: 'Real-time overview of current inventory availability' },
+      { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage multiple storage locations and distributions' },
+      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Log of all stock movements for audit trails' },
+    ]
+  },
+
+  { divider: true, label: 'MARKETING & SYSTEM' },
+  { to: '/admin/staff', icon: UserCog, label: 'Staff Management', description: 'Control administrative access and team roles' },
+  { to: '/admin/coupons', icon: Ticket, label: 'Coupons', description: 'Dynamic discount management for promotions' },
+  { to: '/admin/banners', icon: Image, label: 'Store Banners', description: 'Design homepage sliders and promotional areas' },
+  { to: '/admin/reviews', icon: Star, label: 'Customer Reviews', description: 'Monitor and moderate public product feedback' },
+
+  { divider: true, label: 'CONFIGURATION' },
+  { to: '/admin/settings', icon: Settings, label: 'System Settings', description: 'Global application configuration and defaults' },
+  { to: '/admin/reports', icon: BarChart3, label: 'Reports & Analytics', description: 'Deep dive into sales trends and business growth' },
 ];
 
 export default function AdminLayout() {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Eye, Package } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
@@ -80,10 +80,7 @@ export default function AdminGRNPage() {
 
   const fetchGRNs = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/purchases/grn', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/purchases/grn');
       setGrns(res.data);
     } catch (error) {
       toast.error('Failed to fetch GRNs');
@@ -94,10 +91,7 @@ export default function AdminGRNPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/suppliers/search?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/suppliers/search?limit=100');
       setSuppliers(res.data.map(s => ({
         id: s.id,
         value: s.id,
@@ -111,10 +105,7 @@ export default function AdminGRNPage() {
 
   const fetchPurchaseOrders = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/purchases/orders?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/purchases/purchase-orders?limit=100');
       setPurchaseOrders(res.data.map(po => ({
         id: po.id,
         value: po.id,
@@ -149,10 +140,7 @@ export default function AdminGRNPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/warehouses/search?limit=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/warehouses/search?limit=100');
       setWarehouses(res.data.map(w => ({
         value: w.id,
         label: w.name,
@@ -165,10 +153,7 @@ export default function AdminGRNPage() {
 
   const fetchProducts = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/products?page_size=100');
       setProducts((res.data.products || []).map(p => ({
         value: p.id,
         label: `${p.name} (${p.sku})`,
@@ -183,10 +168,7 @@ export default function AdminGRNPage() {
 
   const fetchCategories = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/categories/all', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/categories/all');
       setCategories(res.data.map(c => ({
         value: c.id,
         label: c.name,
@@ -200,9 +182,7 @@ export default function AdminGRNPage() {
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const slug = newProduct.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const res = await axios.post('http://localhost:8000/api/products', {
+      const res = await api.post('/products', {
         ...newProduct,
         slug,
         short_description: newProduct.description,
@@ -210,8 +190,6 @@ export default function AdminGRNPage() {
         is_featured: false,
         tags: '',
         low_stock_threshold: 5
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       toast.success('Product created successfully!');
@@ -237,14 +215,10 @@ export default function AdminGRNPage() {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const slug = newCategory.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const res = await axios.post('http://localhost:8000/api/categories', {
+      const res = await api.post('/categories', {
         ...newCategory,
         slug,
         is_active: true
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       toast.success('Category created successfully!');
@@ -262,10 +236,7 @@ export default function AdminGRNPage() {
   const handleCreateSupplier = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.post('http://localhost:8000/api/suppliers', newSupplier, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post('/suppliers', newSupplier);
 
       toast.success('Supplier created successfully!');
       await fetchSuppliers();
@@ -293,12 +264,9 @@ export default function AdminGRNPage() {
   const handleCreateWarehouse = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.post('http://localhost:8000/api/warehouses', {
+      const res = await api.post('/warehouses', {
         ...newWarehouse,
         is_active: true
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       toast.success('Warehouse created successfully!');
@@ -379,9 +347,7 @@ export default function AdminGRNPage() {
       };
 
       console.log('Submitting GRN:', cleanedData);
-      await axios.post('http://localhost:8000/api/purchases/grn', cleanedData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/purchases/grn', cleanedData);
       toast.success('GRN created successfully! Inventory updated.');
       setShowForm(false);
       resetForm();
