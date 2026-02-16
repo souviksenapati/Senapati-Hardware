@@ -42,7 +42,7 @@ export function StatusBadge({ status }) {
     returned: 'bg-gray-100 text-gray-800',
     paid: 'bg-green-100 text-green-800',
     failed: 'bg-red-100 text-red-800',
-    refunded: 'bg-orange-100 text-orange-800',
+    refunded: 'bg-primary-100 text-primary-800',
   };
   return (
     <span className={`badge ${colors[status] || 'bg-gray-100 text-gray-800'}`}>

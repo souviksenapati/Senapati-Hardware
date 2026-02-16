@@ -338,15 +338,15 @@ export default function AdminPurchaseOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Purchase Orders</h1>
-          <p className="text-gray-600">Manage purchase orders</p>
+          <h1 className="text-3xl font-bold text-gray-800">Purchase Orders</h1>
+          <p className="text-gray-600 mt-1">Manage purchase orders</p>
         </div>
         <button
           onClick={() => { setShowForm(true); setEditingPO(null); resetForm(); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
         >
           <Plus className="w-5 h-5" />
           <span>Create PO</span>
@@ -355,21 +355,21 @@ export default function AdminPurchaseOrdersPage() {
 
       {!showForm && (
         <>
-          <div className="bg-white p-4 rounded-lg shadow flex items-center space-x-4">
+          <div className="mb-6 flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search by PO number or supplier..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border rounded-lg"
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -382,14 +382,14 @@ export default function AdminPurchaseOrdersPage() {
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Number</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">PO Number</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">

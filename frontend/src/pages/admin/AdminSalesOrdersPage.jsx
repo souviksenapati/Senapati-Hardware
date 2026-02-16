@@ -296,7 +296,7 @@ export default function AdminSalesOrdersPage() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${ord.status === 'delivered' ? 'bg-green-100 text-green-700' :
                       ord.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
                         ord.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                          ord.status === 'confirmed' ? 'bg-purple-100 text-purple-700' :
+                          ord.status === 'confirmed' ? 'bg-primary-100 text-primary-700' :
                             ord.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                               'bg-gray-100 text-gray-700'
                       }`}>
@@ -333,7 +333,7 @@ export default function AdminSalesOrdersPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto py-8">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4">
-            <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-lg">
+            <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-t-lg">
               <h2 className="text-xl font-bold">Create Sales Order</h2>
               <button onClick={() => setShowForm(false)} className="text-white hover:text-gray-200">
                 <X className="w-6 h-6" />
@@ -414,7 +414,7 @@ export default function AdminSalesOrdersPage() {
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-semibold text-gray-800">Order Items</h3>
-                  <button type="button" onClick={addItem} className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                  <button type="button" onClick={addItem} className="text-sm text-primary-600 hover:text-primary-700 font-medium">
                     + Add Item
                   </button>
                 </div>
@@ -554,7 +554,7 @@ export default function AdminSalesOrdersPage() {
                 </div>
 
                 {/* Order Summary */}
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <div className="bg-primary-50 p-4 rounded-lg border border-primary-200">
                   <h4 className="font-semibold text-gray-800 mb-3">Order Summary</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -606,7 +606,7 @@ export default function AdminSalesOrdersPage() {
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between text-lg font-bold text-purple-700 border-t-2 pt-2">
+                    <div className="flex justify-between text-lg font-bold text-primary-700 border-t-2 pt-2">
                       <span>Total Amount:</span>
                       <span>₹{totals.total.toFixed(2)}</span>
                     </div>

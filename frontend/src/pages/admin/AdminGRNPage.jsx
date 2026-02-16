@@ -436,15 +436,15 @@ export default function AdminGRNPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Goods Received Notes (GRN)</h1>
-          <p className="text-gray-600">Record material receipts and update inventory</p>
+          <h1 className="text-3xl font-bold text-gray-800">Goods Received Notes (GRN)</h1>
+          <p className="text-gray-600 mt-1">Record material receipts and update inventory</p>
         </div>
         <button
           onClick={() => { setShowForm(true); resetForm(); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
         >
           <Plus className="w-5 h-5" />
           <span>Create GRN</span>
@@ -453,29 +453,29 @@ export default function AdminGRNPage() {
 
       {!showForm && (
         <>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="mb-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search by GRN number or supplier..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">GRN Number</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">GRN Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier Invoice</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">GRN Number</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">GRN Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Supplier Invoice</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -505,773 +505,796 @@ export default function AdminGRNPage() {
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-6">Create Goods Received Note</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <Package className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium text-blue-900">Import Data</p>
-                  <p className="text-xs text-blue-700">Select an existing purchase order to auto-fill the GRN</p>
-                </div>
-              </div>
-              <div className="w-64">
-                <SearchableDropdown
-                  options={purchaseOrders}
-                  value={formData.po_id}
-                  onChange={handlePOSelect}
-                  placeholder="Select Purchase Order"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">GRN Number *</label>
-                <input
-                  type="text"
-                  value={formData.grn_number}
-                  onChange={(e) => setFormData({ ...formData, grn_number: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 flex items-center justify-between">
-                  <span>Supplier *</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowSupplierForm(true)}
-                    className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                    title="Add new supplier"
-                  >
-                    <Plus className="w-3 h-3" /> New
-                  </button>
-                </label>
-                <SearchableDropdown
-                  options={suppliers}
-                  value={formData.supplier_id}
-                  onChange={(value) => setFormData({ ...formData, supplier_id: value })}
-                  placeholder="Select supplier"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 flex items-center justify-between">
-                  <span>Warehouse</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowWarehouseForm(true)}
-                    className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                    title="Add new warehouse"
-                  >
-                    <Plus className="w-3 h-3" /> New
-                  </button>
-                </label>
-                <SearchableDropdown
-                  options={warehouses}
-                  value={formData.warehouse_id}
-                  onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
-                  placeholder="Select warehouse"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">GRN Date *</label>
-                <input
-                  type="date"
-                  value={formData.grn_date}
-                  onChange={(e) => setFormData({ ...formData, grn_date: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Supplier Invoice No</label>
-                <input
-                  type="text"
-                  value={formData.supplier_invoice_number}
-                  onChange={(e) => setFormData({ ...formData, supplier_invoice_number: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Invoice Date</label>
-                <input
-                  type="date"
-                  value={formData.supplier_invoice_date}
-                  onChange={(e) => setFormData({ ...formData, supplier_invoice_date: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Vehicle Number</label>
-                <input
-                  type="text"
-                  value={formData.vehicle_number}
-                  onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Received By</label>
-                <input
-                  type="text"
-                  value={formData.received_by}
-                  onChange={(e) => setFormData({ ...formData, received_by: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div className="border-t pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Received Items</h3>
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center space-x-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Item</span>
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-start border p-3 rounded bg-gray-50">
-                    <div className="col-span-3">
-                      <label className="text-xs text-gray-600 flex items-center justify-between">
-                        <span>Product</span>
-                        <button
-                          type="button"
-                          onClick={() => { setShowProductForm(true); setCurrentItemIndex(index); }}
-                          className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                          title="Add new product"
-                        >
-                          <Plus className="w-3 h-3" /> New
-                        </button>
-                      </label>
-                      <SearchableDropdown
-                        options={products}
-                        value={item.product_id}
-                        onChange={(value) => handleItemChange(index, 'product_id', value)}
-                        placeholder="Select product"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="text-xs text-gray-600">Ordered</label>
-                      <input
-                        type="number"
-                        value={item.ordered_quantity}
-                        onChange={(e) => handleItemChange(index, 'ordered_quantity', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="text-xs text-gray-600">Received *</label>
-                      <input
-                        type="number"
-                        value={item.received_quantity}
-                        onChange={(e) => handleItemChange(index, 'received_quantity', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        required
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs text-gray-600">Unit Price</label>
-                      <input
-                        type="number"
-                        value={item.unit_price}
-                        onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs text-gray-600">Batch Number</label>
-                      <input
-                        type="text"
-                        value={item.batch_number}
-                        onChange={(e) => handleItemChange(index, 'batch_number', e.target.value)}
-                        className="w-full px-2 py-1 border rounded"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs text-gray-600">Expiry Date</label>
-                      <input
-                        type="date"
-                        value={item.expiry_date}
-                        onChange={(e) => handleItemChange(index, 'expiry_date', e.target.value)}
-                        className="w-full px-2 py-1 border rounded"
-                      />
-                    </div>
-                    <div className="col-span-1 flex items-end">
-                      {formData.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="text-red-600 hover:text-red-800 px-2 py-1"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Notes</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg"
-                rows="3"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); resetForm(); }}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <Package className="w-4 h-4" />
-                <span>Create GRN & Update Inventory</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Quick Add Product Modal */}
-      {showProductForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Quick Add Product</h2>
-                <button
-                  type="button"
-                  onClick={() => { setShowProductForm(false); setCurrentItemIndex(null); }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b flex items-center justify-between flex-shrink-0">
+              <h2 className="text-xl font-bold">Create Goods Received Note</h2>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
 
-              <form onSubmit={handleCreateProduct} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Product Name *</label>
-                    <input
-                      type="text"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      required
+            <div className="overflow-y-auto flex-1">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Package className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Import Data</p>
+                      <p className="text-xs text-blue-700">Select an existing purchase order to auto-fill the GRN</p>
+                    </div>
+                  </div>
+                  <div className="w-64">
+                    <SearchableDropdown
+                      options={purchaseOrders}
+                      value={formData.po_id}
+                      onChange={handlePOSelect}
+                      placeholder="Select Purchase Order"
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">SKU *</label>
+                    <label className="block text-sm font-medium mb-1">GRN Number *</label>
                     <input
                       type="text"
-                      value={newProduct.sku}
-                      onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                      value={formData.grn_number}
+                      onChange={(e) => setFormData({ ...formData, grn_number: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Brand</label>
-                    <input
-                      type="text"
-                      value={newProduct.brand}
-                      onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium mb-1 flex items-center justify-between">
-                      <span>Category</span>
+                      <span>Supplier *</span>
                       <button
                         type="button"
-                        onClick={() => setShowCategoryForm(true)}
+                        onClick={() => setShowSupplierForm(true)}
                         className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                        title="Add new category"
+                        title="Add new supplier"
                       >
                         <Plus className="w-3 h-3" /> New
                       </button>
                     </label>
                     <SearchableDropdown
-                      options={categories}
-                      value={newProduct.category_id}
-                      onChange={(value) => setNewProduct({ ...newProduct, category_id: value })}
-                      placeholder="Select category"
+                      options={suppliers}
+                      value={formData.supplier_id}
+                      onChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                      placeholder="Select supplier"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Unit</label>
-                    <select
-                      value={newProduct.unit}
-                      onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    >
-                      <option value="piece">Piece</option>
-                      <option value="kg">Kilogram</option>
-                      <option value="liter">Liter</option>
-                      <option value="meter">Meter</option>
-                      <option value="box">Box</option>
-                      <option value="pack">Pack</option>
-                      <option value="bag">Bag</option>
-                    </select>
+                    <label className="block text-sm font-medium mb-1 flex items-center justify-between">
+                      <span>Warehouse</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowWarehouseForm(true)}
+                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                        title="Add new warehouse"
+                      >
+                        <Plus className="w-3 h-3" /> New
+                      </button>
+                    </label>
+                    <SearchableDropdown
+                      options={warehouses}
+                      value={formData.warehouse_id}
+                      onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
+                      placeholder="Select warehouse"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Cost Price *</label>
+                    <label className="block text-sm font-medium mb-1">GRN Date *</label>
                     <input
-                      type="number"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                      type="date"
+                      value={formData.grn_date}
+                      onChange={(e) => setFormData({ ...formData, grn_date: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
-                      step="0.01"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Initial Stock</label>
+                    <label className="block text-sm font-medium mb-1">Supplier Invoice No</label>
                     <input
-                      type="number"
-                      value={newProduct.stock}
-                      onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
+                      type="text"
+                      value={formData.supplier_invoice_number}
+                      onChange={(e) => setFormData({ ...formData, supplier_invoice_number: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Invoice Date</label>
+                    <input
+                      type="date"
+                      value={formData.supplier_invoice_date}
+                      onChange={(e) => setFormData({ ...formData, supplier_invoice_date: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Vehicle Number</label>
+                    <input
+                      type="text"
+                      value={formData.vehicle_number}
+                      onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Received By</label>
+                    <input
+                      type="text"
+                      value={formData.received_by}
+                      onChange={(e) => setFormData({ ...formData, received_by: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
                 </div>
 
+                <div className="border-t pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Received Items</h3>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center space-x-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Item</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-start border p-3 rounded bg-gray-50">
+                        <div className="col-span-3">
+                          <label className="text-xs text-gray-600 flex items-center justify-between">
+                            <span>Product</span>
+                            <button
+                              type="button"
+                              onClick={() => { setShowProductForm(true); setCurrentItemIndex(index); }}
+                              className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                              title="Add new product"
+                            >
+                              <Plus className="w-3 h-3" /> New
+                            </button>
+                          </label>
+                          <SearchableDropdown
+                            options={products}
+                            value={item.product_id}
+                            onChange={(value) => handleItemChange(index, 'product_id', value)}
+                            placeholder="Select product"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-xs text-gray-600">Ordered</label>
+                          <input
+                            type="number"
+                            value={item.ordered_quantity}
+                            onChange={(e) => handleItemChange(index, 'ordered_quantity', parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-xs text-gray-600">Received *</label>
+                          <input
+                            type="number"
+                            value={item.received_quantity}
+                            onChange={(e) => handleItemChange(index, 'received_quantity', parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border rounded"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-600">Unit Price</label>
+                          <input
+                            type="number"
+                            value={item.unit_price}
+                            onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border rounded"
+                            step="0.01"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-600">Batch Number</label>
+                          <input
+                            type="text"
+                            value={item.batch_number}
+                            onChange={(e) => handleItemChange(index, 'batch_number', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-600">Expiry Date</label>
+                          <input
+                            type="date"
+                            value={item.expiry_date}
+                            onChange={(e) => handleItemChange(index, 'expiry_date', e.target.value)}
+                            className="w-full px-2 py-1 border rounded"
+                          />
+                        </div>
+                        <div className="col-span-1 flex items-end">
+                          {formData.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(index)}
+                              className="text-red-600 hover:text-red-800 px-2 py-1"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <label className="block text-sm font-medium mb-1">Notes</label>
                   <textarea
-                    value={newProduct.description}
-                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
                     rows="3"
                   />
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => { setShowForm(false); resetForm(); }}
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>Create GRN & Update Inventory</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Quick Add Product Modal */}
+      {
+        showProductForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Quick Add Product</h2>
                   <button
                     type="button"
                     onClick={() => { setShowProductForm(false); setCurrentItemIndex(null); }}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create & Select Product
+                    ✕
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {selectedGRN && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">GRN Details</h3>
-              <button type="button" onClick={() => setSelectedGRN(null)} className="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            <div className="p-4 space-y-3 text-sm">
-              <p><span className="font-medium">GRN #:</span> {selectedGRN.grn_number}</p>
-              <p><span className="font-medium">Supplier:</span> {selectedGRN.supplier?.name || '-'}</p>
-              <p><span className="font-medium">Date:</span> {new Date(selectedGRN.grn_date).toLocaleDateString()}</p>
-              <p><span className="font-medium">Status:</span> {selectedGRN.status}</p>
-              <p><span className="font-medium">Supplier Invoice:</span> {selectedGRN.supplier_invoice_number || '-'}</p>
+                <form onSubmit={handleCreateProduct} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Product Name *</label>
+                      <input
+                        type="text"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        required
+                      />
+                    </div>
 
-              <div className="border rounded overflow-hidden mt-3">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ordered</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {(selectedGRN.items || []).map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-3 py-2">{item.product?.name || item.product_id}</td>
-                        <td className="px-3 py-2">{item.ordered_quantity}</td>
-                        <td className="px-3 py-2">{item.received_quantity}</td>
-                        <td className="px-3 py-2">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
-                        <td className="px-3 py-2">{item.batch_number || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">SKU *</label>
+                      <input
+                        type="text"
+                        value={newProduct.sku}
+                        onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Brand</label>
+                      <input
+                        type="text"
+                        value={newProduct.brand}
+                        onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1 flex items-center justify-between">
+                        <span>Category</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowCategoryForm(true)}
+                          className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                          title="Add new category"
+                        >
+                          <Plus className="w-3 h-3" /> New
+                        </button>
+                      </label>
+                      <SearchableDropdown
+                        options={categories}
+                        value={newProduct.category_id}
+                        onChange={(value) => setNewProduct({ ...newProduct, category_id: value })}
+                        placeholder="Select category"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Unit</label>
+                      <select
+                        value={newProduct.unit}
+                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      >
+                        <option value="piece">Piece</option>
+                        <option value="kg">Kilogram</option>
+                        <option value="liter">Liter</option>
+                        <option value="meter">Meter</option>
+                        <option value="box">Box</option>
+                        <option value="pack">Pack</option>
+                        <option value="bag">Bag</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Cost Price *</label>
+                      <input
+                        type="number"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        step="0.01"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Initial Stock</label>
+                      <input
+                        type="number"
+                        value={newProduct.stock}
+                        onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      value={newProduct.description}
+                      onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => { setShowProductForm(false); setCurrentItemIndex(null); }}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create & Select Product
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {
+        selectedGRN && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h3 className="text-lg font-semibold">GRN Details</h3>
+                <button type="button" onClick={() => setSelectedGRN(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+              <div className="p-4 space-y-3 text-sm">
+                <p><span className="font-medium">GRN #:</span> {selectedGRN.grn_number}</p>
+                <p><span className="font-medium">Supplier:</span> {selectedGRN.supplier?.name || '-'}</p>
+                <p><span className="font-medium">Date:</span> {new Date(selectedGRN.grn_date).toLocaleDateString()}</p>
+                <p><span className="font-medium">Status:</span> {selectedGRN.status}</p>
+                <p><span className="font-medium">Supplier Invoice:</span> {selectedGRN.supplier_invoice_number || '-'}</p>
+
+                <div className="border rounded overflow-hidden mt-3">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ordered</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {(selectedGRN.items || []).map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-3 py-2">{item.product?.name || item.product_id}</td>
+                          <td className="px-3 py-2">{item.ordered_quantity}</td>
+                          <td className="px-3 py-2">{item.received_quantity}</td>
+                          <td className="px-3 py-2">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                          <td className="px-3 py-2">{item.batch_number || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* Quick Add Category Modal */}
-      {showCategoryForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Quick Add Category</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryForm(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateCategory} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category Name *</label>
-                  <input
-                    type="text"
-                    value={newCategory.name}
-                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    value={newCategory.description}
-                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="3"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+      {
+        showCategoryForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Quick Add Category</h2>
                   <button
                     type="button"
                     onClick={() => setShowCategoryForm(false)}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create & Select Category
+                    ✕
                   </button>
                 </div>
-              </form>
+
+                <form onSubmit={handleCreateCategory} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category Name *</label>
+                    <input
+                      type="text"
+                      value={newCategory.name}
+                      onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      value={newCategory.description}
+                      onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryForm(false)}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create & Select Category
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Quick Add Supplier Modal */}
-      {showSupplierForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Quick Add Supplier</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowSupplierForm(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateSupplier} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Supplier Code *</label>
-                    <input
-                      type="text"
-                      value={newSupplier.supplier_code}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, supplier_code: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      placeholder="e.g., SUP001"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Supplier Name *</label>
-                    <input
-                      type="text"
-                      value={newSupplier.name}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Contact Person</label>
-                    <input
-                      type="text"
-                      value={newSupplier.contact_person}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, contact_person: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone *</label>
-                    <input
-                      type="tel"
-                      value={newSupplier.phone}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={newSupplier.email}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-1">Address</label>
-                    <input
-                      type="text"
-                      value={newSupplier.address_line1}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, address_line1: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">City</label>
-                    <input
-                      type="text"
-                      value={newSupplier.city}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, city: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">State</label>
-                    <input
-                      type="text"
-                      value={newSupplier.state}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, state: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Pincode</label>
-                    <input
-                      type="text"
-                      value={newSupplier.pincode}
-                      onChange={(e) => setNewSupplier({ ...newSupplier, pincode: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+      {
+        showSupplierForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Quick Add Supplier</h2>
                   <button
                     type="button"
                     onClick={() => setShowSupplierForm(false)}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create & Select Supplier
+                    ✕
                   </button>
                 </div>
-              </form>
+
+                <form onSubmit={handleCreateSupplier} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Supplier Code *</label>
+                      <input
+                        type="text"
+                        value={newSupplier.supplier_code}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, supplier_code: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="e.g., SUP001"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Supplier Name *</label>
+                      <input
+                        type="text"
+                        value={newSupplier.name}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Contact Person</label>
+                      <input
+                        type="text"
+                        value={newSupplier.contact_person}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, contact_person: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Phone *</label>
+                      <input
+                        type="tel"
+                        value={newSupplier.phone}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={newSupplier.email}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">Address</label>
+                      <input
+                        type="text"
+                        value={newSupplier.address_line1}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, address_line1: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">City</label>
+                      <input
+                        type="text"
+                        value={newSupplier.city}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, city: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">State</label>
+                      <input
+                        type="text"
+                        value={newSupplier.state}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, state: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Pincode</label>
+                      <input
+                        type="text"
+                        value={newSupplier.pincode}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, pincode: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowSupplierForm(false)}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create & Select Supplier
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Quick Add Warehouse Modal */}
-      {showWarehouseForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Quick Add Warehouse</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowWarehouseForm(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateWarehouse} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Warehouse Code *</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.code}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, code: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      placeholder="e.g., WH001"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Warehouse Name *</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.name}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      required
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-1">Address Line 1</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.address_line1}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line1: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-1">Address Line 2</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.address_line2}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line2: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">City</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.city}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, city: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">State</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.state}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, state: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Pincode</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.pincode}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, pincode: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Manager Name</label>
-                    <input
-                      type="text"
-                      value={newWarehouse.manager_name}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, manager_name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={newWarehouse.phone}
-                      onChange={(e) => setNewWarehouse({ ...newWarehouse, phone: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+      {
+        showWarehouseForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Quick Add Warehouse</h2>
                   <button
                     type="button"
                     onClick={() => setShowWarehouseForm(false)}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create & Select Warehouse
+                    ✕
                   </button>
                 </div>
-              </form>
+
+                <form onSubmit={handleCreateWarehouse} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Warehouse Code *</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.code}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, code: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="e.g., WH001"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Warehouse Name *</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.name}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        required
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">Address Line 1</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.address_line1}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line1: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">Address Line 2</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.address_line2}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line2: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">City</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.city}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, city: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">State</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.state}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, state: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Pincode</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.pincode}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, pincode: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Manager Name</label>
+                      <input
+                        type="text"
+                        value={newWarehouse.manager_name}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, manager_name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={newWarehouse.phone}
+                        onChange={(e) => setNewWarehouse({ ...newWarehouse, phone: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowWarehouseForm(false)}
+                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create & Select Warehouse
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

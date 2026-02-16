@@ -11,7 +11,7 @@ export default function DashboardPage() {
   useEffect(() => {
     adminAPI.dashboard()
       .then(res => setStats(res.data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -21,7 +21,7 @@ export default function DashboardPage() {
     { label: 'Total Revenue', value: `₹${(stats?.total_revenue || 0).toLocaleString()}`, icon: IndianRupee, color: 'bg-green-500', link: '/admin/reports' },
     { label: 'Total Orders', value: stats?.total_orders || 0, icon: ShoppingCart, color: 'bg-blue-500', link: '/admin/orders' },
     { label: 'Total Products', value: stats?.total_products || 0, icon: Package, color: 'bg-purple-500', link: '/admin/products' },
-    { label: 'Total Customers', value: stats?.total_customers || 0, icon: Users, color: 'bg-orange-500', link: '/admin/customers' },
+    { label: 'Total Customers', value: stats?.total_customers || 0, icon: Users, color: 'bg-primary-500', link: '/admin/customers' },
   ];
 
   return (
@@ -65,11 +65,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">₹{o.total?.toLocaleString()}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      o.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                      o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>{o.status}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                        o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                      }`}>{o.status}</span>
                   </div>
                 </div>
               ))}
@@ -80,7 +79,7 @@ export default function DashboardPage() {
         {/* Low Stock Alerts */}
         <div className="bg-white rounded-xl p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-orange-500" /> Low Stock Alerts</h2>
+            <h2 className="font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-primary-500" /> Low Stock Alerts</h2>
             <Link to="/admin/inventory" className="text-sm text-primary hover:underline">View All</Link>
           </div>
           {stats?.low_stock_list?.length > 0 ? (

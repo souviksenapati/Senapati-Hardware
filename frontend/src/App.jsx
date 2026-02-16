@@ -37,7 +37,7 @@ import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminBannersPage from './pages/admin/AdminBannersPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminInventoryPage from './pages/admin/AdminInventoryPage';
-import AdminInwardsOutwardsPage from './pages/admin/AdminInwardsOutwardsPageV2';
+import AdminInwardsOutwardsPage from './pages/admin/AdminInwardsOutwardsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 // Inventory Management Pages

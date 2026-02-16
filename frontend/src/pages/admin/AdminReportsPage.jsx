@@ -24,9 +24,8 @@ export default function AdminReportsPage() {
         <h1 className="text-2xl font-bold">Reports & Analytics</h1>
         <div className="flex gap-2">
           {['week', 'month', 'year'].map(p => (
-            <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${
-              period === p ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}>
+            <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${period === p ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}>
               {p}
             </button>
           ))}
@@ -39,7 +38,7 @@ export default function AdminReportsPage() {
           { label: 'Total Revenue', value: `₹${(report?.total_revenue || 0).toLocaleString()}`, color: 'text-green-600' },
           { label: 'Total Orders', value: report?.total_orders || 0, color: 'text-blue-600' },
           { label: 'Avg Order Value', value: `₹${(report?.avg_order_value || 0).toLocaleString()}`, color: 'text-purple-600' },
-          { label: 'Items Sold', value: report?.total_items_sold || 0, color: 'text-orange-600' },
+          { label: 'Items Sold', value: report?.total_items_sold || 0, color: 'text-primary-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl p-5 shadow-sm">
             <p className="text-sm text-gray-500">{s.label}</p>
@@ -96,11 +95,10 @@ export default function AdminReportsPage() {
               {report.order_status_breakdown.map((s, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      s.status === 'delivered' ? 'bg-green-500' :
-                      s.status === 'cancelled' ? 'bg-red-500' :
-                      s.status === 'shipped' ? 'bg-blue-500' : 'bg-yellow-500'
-                    }`} />
+                    <div className={`w-3 h-3 rounded-full ${s.status === 'delivered' ? 'bg-green-500' :
+                        s.status === 'cancelled' ? 'bg-red-500' :
+                          s.status === 'shipped' ? 'bg-blue-500' : 'bg-yellow-500'
+                      }`} />
                     <span className="text-sm capitalize">{s.status}</span>
                   </div>
                   <span className="text-sm font-medium">{s.count}</span>

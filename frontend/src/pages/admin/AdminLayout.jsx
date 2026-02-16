@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, UserCog,
-  Ticket, Image, Star, Warehouse, Settings, BarChart3, LogOut, Store, 
-  ArrowLeftRight, Building, UserCircle, MapPin, ShoppingBag, PackageCheck, 
+  Ticket, Image, Star, Warehouse, Settings, BarChart3, LogOut, Store,
+  ArrowLeftRight, Building, UserCircle, MapPin, ShoppingBag, PackageCheck,
   FileText, Receipt, FileSignature, ClipboardList, Info, ChevronDown
 } from 'lucide-react';
 
@@ -26,10 +26,10 @@ const links = [
   { to: '/admin/sales-quotations', icon: FileSignature, label: 'Sales Quotations', description: 'Create price quotations for customers' },
   { to: '/admin/sales-invoices', icon: FileText, label: 'Sales Invoices', description: 'Generate GST invoices and track payments' },
   { to: '/admin/inventory', icon: Warehouse, label: 'Stock Levels', description: 'Monitor current stock levels' },
-  { 
-    dropdown: true, 
-    icon: Settings, 
-    label: 'Advanced Features', 
+  {
+    dropdown: true,
+    icon: Settings,
+    label: 'Advanced Features',
     description: 'Advanced inventory management features',
     items: [
       { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage warehouse locations and details' },
@@ -66,7 +66,7 @@ export default function AdminLayout() {
       <aside className="w-64 bg-gray-900 text-white flex flex-col shrink-0 shadow-2xl relative overflow-visible">
         <div className="p-5 border-b border-gray-700 bg-gray-800">
           <div className="flex items-center gap-2">
-            <Store className="w-7 h-7 text-orange-400" />
+            <Store className="w-7 h-7 text-primary-400" />
             <div>
               <p className="font-bold">Senapati Hardware</p>
               <p className="text-xs text-gray-400">Admin Panel</p>
@@ -82,28 +82,27 @@ export default function AdminLayout() {
                 </div>
               );
             }
-            
+
             // Handle dropdown menu
             if (link.dropdown) {
               const isExpanded = expandedDropdown === link.label;
               const isAnyChildActive = link.items.some(item => location.pathname === item.to);
-              
+
               return (
                 <div key={`dropdown-${index}`}>
                   <button
                     onClick={() => setExpandedDropdown(isExpanded ? null : link.label)}
                     onMouseEnter={() => setHoveredNavItem(link.label)}
                     onMouseLeave={() => setHoveredNavItem(null)}
-                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm transition-all ${
-                      isAnyChildActive ? 'bg-primary text-white border-l-4 border-orange-400 font-medium' : 'text-gray-300 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
-                    }`}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm transition-all ${isAnyChildActive ? 'bg-primary text-white border-l-4 border-primary-400 font-medium' : 'text-gray-300 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <link.icon className="w-5 h-5" />
                       <span>{link.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="relative"
                         ref={(el) => iconRefs.current[link.label] = el}
                         onMouseEnter={(e) => {
@@ -115,21 +114,19 @@ export default function AdminLayout() {
                         onMouseLeave={() => setHoveredLink(null)}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Info className={`w-4 h-4 transition-all duration-200 ${
-                          hoveredLink === link.label ? 'text-orange-400' : 'text-white/60'
-                        } ${
-                          hoveredNavItem === link.label ? 'opacity-100' : 'opacity-0'
-                        }`} />
-                        
+                        <Info className={`w-4 h-4 transition-all duration-200 ${hoveredLink === link.label ? 'text-primary-400' : 'text-white/60'
+                          } ${hoveredNavItem === link.label ? 'opacity-100' : 'opacity-0'
+                          }`} />
+
                         {hoveredLink === link.label && link.description && createPortal(
-                          <div 
-                            className="fixed z-[9999] w-72" 
+                          <div
+                            className="fixed z-[9999] w-72"
                             style={{ top: `${tooltipPos.top}px`, left: `${tooltipPos.left + 12}px`, transform: 'translateY(-50%)' }}
                           >
-                            <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-orange-500/50 animate-fadeIn">
-                              <div className="font-semibold mb-1 text-orange-400">{link.label}</div>
+                            <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-primary-500/50 animate-fadeIn">
+                              <div className="font-semibold mb-1 text-primary-400">{link.label}</div>
                               <div className="text-gray-200 leading-relaxed">{link.description}</div>
-                              <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-orange-500/50"></div>
+                              <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-primary-500/50"></div>
                             </div>
                           </div>,
                           document.body
@@ -138,7 +135,7 @@ export default function AdminLayout() {
                       <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   </button>
-                  
+
                   {/* Dropdown items */}
                   {isExpanded && (
                     <div className="bg-gray-800/50">
@@ -151,8 +148,7 @@ export default function AdminLayout() {
                           <NavLink
                             to={item.to}
                             className={({ isActive }) =>
-                              `flex items-center justify-between gap-3 pl-12 pr-4 py-2.5 text-sm transition-all ${
-                                isActive ? 'bg-orange-500/20 text-orange-300 border-l-4 border-orange-400 font-medium' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white border-l-4 border-transparent'
+                              `flex items-center justify-between gap-3 pl-12 pr-4 py-2.5 text-sm transition-all ${isActive ? 'bg-primary-500/20 text-primary-300 border-l-4 border-primary-400 font-medium' : 'text-gray-400 hover:bg-gray-700/50 hover:text-white border-l-4 border-transparent'
                               }`
                             }
                           >
@@ -160,7 +156,7 @@ export default function AdminLayout() {
                               <item.icon className="w-4 h-4" />
                               <span>{item.label}</span>
                             </div>
-                            <div 
+                            <div
                               className="relative"
                               ref={(el) => iconRefs.current[item.to] = el}
                               onMouseEnter={(e) => {
@@ -170,21 +166,19 @@ export default function AdminLayout() {
                               }}
                               onMouseLeave={() => setHoveredLink(null)}
                             >
-                              <Info className={`w-3.5 h-3.5 transition-all duration-200 ${
-                                hoveredLink === item.to ? 'text-orange-400' : 'text-white/60'
-                              } ${
-                                hoveredNavItem === item.to ? 'opacity-100' : 'opacity-0'
-                              }`} />
-                              
+                              <Info className={`w-3.5 h-3.5 transition-all duration-200 ${hoveredLink === item.to ? 'text-orange-400' : 'text-white/60'
+                                } ${hoveredNavItem === item.to ? 'opacity-100' : 'opacity-0'
+                                }`} />
+
                               {hoveredLink === item.to && item.description && createPortal(
-                                <div 
-                                  className="fixed z-[9999] w-72" 
+                                <div
+                                  className="fixed z-[9999] w-72"
                                   style={{ top: `${tooltipPos.top}px`, left: `${tooltipPos.left + 12}px`, transform: 'translateY(-50%)' }}
                                 >
-                                  <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-orange-500/50 animate-fadeIn">
-                                    <div className="font-semibold mb-1 text-orange-400">{item.label}</div>
+                                  <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-primary-500/50 animate-fadeIn">
+                                    <div className="font-semibold mb-1 text-primary-400">{item.label}</div>
                                     <div className="text-gray-200 leading-relaxed">{item.description}</div>
-                                    <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-orange-500/50"></div>
+                                    <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-primary-500/50"></div>
                                   </div>
                                 </div>,
                                 document.body
@@ -198,10 +192,10 @@ export default function AdminLayout() {
                 </div>
               );
             }
-            
+
             // Handle regular links
             return (
-              <div 
+              <div
                 key={link.to}
                 className="relative"
                 onMouseEnter={() => setHoveredNavItem(link.to)}
@@ -211,16 +205,15 @@ export default function AdminLayout() {
                   to={link.to}
                   end={link.end}
                   className={({ isActive }) =>
-                    `flex items-center justify-between gap-3 px-4 py-3 text-sm transition-all relative ${
-                      isActive ? 'bg-primary text-white border-l-4 border-orange-400 font-medium' : 'text-gray-300 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
+                    `flex items-center justify-between gap-3 px-4 py-3 text-sm transition-all relative ${isActive ? 'bg-primary text-white border-l-4 border-primary-400 font-medium' : 'text-gray-300 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
                     }`
                   }
                 >
                   <div className="flex items-center gap-3">
-                    <link.icon className="w-5 h-5" /> 
+                    <link.icon className="w-5 h-5" />
                     <span>{link.label}</span>
                   </div>
-                  <div 
+                  <div
                     className="relative"
                     ref={(el) => iconRefs.current[link.to] = el}
                     onMouseEnter={(e) => {
@@ -230,23 +223,21 @@ export default function AdminLayout() {
                     }}
                     onMouseLeave={() => setHoveredLink(null)}
                   >
-                    <Info className={`w-4 h-4 transition-all duration-200 ${
-                      hoveredLink === link.to ? 'text-orange-400' : 'text-white/60'
-                    } ${
-                      hoveredNavItem === link.to ? 'opacity-100' : 'opacity-0'
-                    }`} />
-                    
+                    <Info className={`w-4 h-4 transition-all duration-200 ${hoveredLink === link.to ? 'text-primary-400' : 'text-white/60'
+                      } ${hoveredNavItem === link.to ? 'opacity-100' : 'opacity-0'
+                      }`} />
+
                     {/* Tooltip - Rendered via Portal */}
                     {hoveredLink === link.to && link.description && createPortal(
-                      <div 
-                        className="fixed z-[9999] w-72" 
+                      <div
+                        className="fixed z-[9999] w-72"
                         style={{ top: `${tooltipPos.top}px`, left: `${tooltipPos.left + 12}px`, transform: 'translateY(-50%)' }}
                       >
-                        <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-orange-500/50 animate-fadeIn">
-                          <div className="font-semibold mb-1 text-orange-400">{link.label}</div>
+                        <div className="bg-gray-800 text-white text-xs p-3 rounded-lg shadow-2xl border border-primary-500/50 animate-fadeIn">
+                          <div className="font-semibold mb-1 text-primary-400">{link.label}</div>
                           <div className="text-gray-200 leading-relaxed">{link.description}</div>
                           {/* Arrow */}
-                          <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-orange-500/50"></div>
+                          <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-primary-500/50"></div>
                         </div>
                       </div>,
                       document.body

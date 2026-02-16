@@ -32,7 +32,7 @@ export default function AdminInventoryTransactionsPage() {
   const fetchProducts = () => {
     productsAPI.list({ page_size: 1000 })
       .then(r => setProducts(r.data.products || []))
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function AdminInventoryTransactionsPage() {
           <p className="text-sm text-gray-500">Inward Transactions</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-          <p className="text-2xl font-bold text-orange-600">{outwardCount}</p>
+          <p className="text-2xl font-bold text-primary-600">{outwardCount}</p>
           <p className="text-sm text-gray-500">Outward Transactions</p>
         </div>
       </div>
@@ -124,9 +124,8 @@ export default function AdminInventoryTransactionsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${
-              filter === f ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
+            className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${filter === f ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
           >
             {f === 'all' ? 'All Transactions' : f === 'inward' ? 'Inward Only' : 'Outward Only'}
           </button>
@@ -157,13 +156,12 @@ export default function AdminInventoryTransactionsPage() {
                   </td>
                   <td className="p-3 font-medium">{t.product_name || t.product?.name || 'N/A'}</td>
                   <td className="p-3">
-                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${
-                      t.transaction_type === 'inward' 
-                        ? 'bg-green-100 text-green-700' 
+                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${t.transaction_type === 'inward'
+                        ? 'bg-green-100 text-green-700'
                         : t.transaction_type === 'outward'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
                       {t.transaction_type === 'inward' && <TrendingUp className="w-3 h-3" />}
                       {t.transaction_type === 'outward' && <TrendingDown className="w-3 h-3" />}
                       {t.transaction_type === 'inward' ? 'Inward' : t.transaction_type === 'outward' ? 'Outward' : 'Manual'}
@@ -202,7 +200,7 @@ export default function AdminInventoryTransactionsPage() {
                   <select
                     className="input-field"
                     value={form.transaction_type}
-                    onChange={e => setForm({...form, transaction_type: e.target.value})}
+                    onChange={e => setForm({ ...form, transaction_type: e.target.value })}
                     required
                   >
                     <option value="inward">Inward (Stock In)</option>
@@ -214,7 +212,7 @@ export default function AdminInventoryTransactionsPage() {
                   <select
                     className="input-field"
                     value={form.product_id}
-                    onChange={e => setForm({...form, product_id: e.target.value})}
+                    onChange={e => setForm({ ...form, product_id: e.target.value })}
                     required
                   >
                     <option value="">Select Product</option>
@@ -230,7 +228,7 @@ export default function AdminInventoryTransactionsPage() {
                     min="1"
                     className="input-field"
                     value={form.quantity}
-                    onChange={e => setForm({...form, quantity: e.target.value})}
+                    onChange={e => setForm({ ...form, quantity: e.target.value })}
                     required
                   />
                 </div>
@@ -240,7 +238,7 @@ export default function AdminInventoryTransactionsPage() {
                     type="text"
                     className="input-field"
                     value={form.invoice_number}
-                    onChange={e => setForm({...form, invoice_number: e.target.value})}
+                    onChange={e => setForm({ ...form, invoice_number: e.target.value })}
                     placeholder="INV-001"
                   />
                 </div>
@@ -252,7 +250,7 @@ export default function AdminInventoryTransactionsPage() {
                     type="text"
                     className="input-field"
                     value={form.supplier_name}
-                    onChange={e => setForm({...form, supplier_name: e.target.value})}
+                    onChange={e => setForm({ ...form, supplier_name: e.target.value })}
                     placeholder={form.transaction_type === 'inward' ? 'Supplier name' : 'Customer name'}
                   />
                 </div>
@@ -262,7 +260,7 @@ export default function AdminInventoryTransactionsPage() {
                     type="date"
                     className="input-field"
                     value={form.invoice_date}
-                    onChange={e => setForm({...form, invoice_date: e.target.value})}
+                    onChange={e => setForm({ ...form, invoice_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -272,7 +270,7 @@ export default function AdminInventoryTransactionsPage() {
                   rows={3}
                   className="input-field"
                   value={form.notes}
-                  onChange={e => setForm({...form, notes: e.target.value})}
+                  onChange={e => setForm({ ...form, notes: e.target.value })}
                   placeholder="Additional notes about this transaction..."
                 />
               </div>

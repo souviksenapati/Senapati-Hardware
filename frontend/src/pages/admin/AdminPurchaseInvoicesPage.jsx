@@ -293,7 +293,7 @@ export default function AdminPurchaseInvoicesPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto py-8">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4">
-            <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-t-lg">
+            <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-t-lg">
               <h2 className="text-xl font-bold">Create Purchase Invoice</h2>
               <button onClick={() => setShowForm(false)} className="text-white hover:text-gray-200">
                 <X className="w-6 h-6" />
@@ -374,7 +374,7 @@ export default function AdminPurchaseInvoicesPage() {
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-semibold text-gray-800">Invoice Items</h3>
-                  <button type="button" onClick={addItem} className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                  <button type="button" onClick={addItem} className="text-sm text-primary-600 hover:text-primary-700 font-medium">
                     + Add Item
                   </button>
                 </div>
