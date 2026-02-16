@@ -41,7 +41,7 @@ export default function AdminSuppliersPage() {
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await api.get('/suppliers/', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -57,20 +57,28 @@ export default function AdminSuppliersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = sessionStorage.getItem('token');
+
+      const data = {
+        ...formData,
+        supplier_code: formData.supplier_code.toUpperCase(),
+        gst_number: (formData.gst_number || '').toUpperCase(),
+        pan_number: (formData.pan_number || '').toUpperCase(),
+        bank_ifsc: (formData.bank_ifsc || '').toUpperCase()
+      };
+
       if (editingSupplier) {
-        await api.put(`/suppliers/${editingSupplier.id}`, formData, {
+        await api.put(`/suppliers/${editingSupplier.id}`, data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Supplier updated successfully');
       } else {
-        await api.post('/suppliers/', formData, {
+        await api.post('/suppliers/', data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Supplier created successfully');
       }
-      
+
       setShowModal(false);
       resetForm();
       fetchSuppliers();
@@ -81,9 +89,9 @@ export default function AdminSuppliersPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this supplier?')) return;
-    
+
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await api.delete(`/suppliers/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -235,9 +243,8 @@ export default function AdminSuppliersPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{supplier.gst_number || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      supplier.payment_terms === 'cash' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs rounded-full ${supplier.payment_terms === 'cash' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {supplier.payment_terms.replace('_', ' ').toUpperCase()}
                     </span>
                   </td>
@@ -301,13 +308,15 @@ export default function AdminSuppliersPage() {
             <form onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Supplier Code *</label>
+                  <label className="block text-sm font-medium mb-1">Supplier Code * <span className="text-xs text-gray-500 font-normal">(Max 10 chars)</span></label>
                   <input
                     type="text"
                     required
+                    maxLength={10}
                     value={formData.supplier_code}
-                    onChange={(e) => setFormData({...formData, supplier_code: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, supplier_code: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. SUP-001"
                   />
                 </div>
 
@@ -317,7 +326,7 @@ export default function AdminSuppliersPage() {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -327,7 +336,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.contact_person}
-                    onChange={(e) => setFormData({...formData, contact_person: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -338,7 +347,7 @@ export default function AdminSuppliersPage() {
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -348,7 +357,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -358,7 +367,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.gst_number}
-                    onChange={(e) => setFormData({...formData, gst_number: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -368,7 +377,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.pan_number}
-                    onChange={(e) => setFormData({...formData, pan_number: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, pan_number: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -377,7 +386,7 @@ export default function AdminSuppliersPage() {
                   <label className="block text-sm font-medium mb-1">Payment Terms</label>
                   <select
                     value={formData.payment_terms}
-                    onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="cash">Cash</option>
@@ -394,7 +403,7 @@ export default function AdminSuppliersPage() {
                     type="number"
                     step="0.01"
                     value={formData.credit_limit}
-                    onChange={(e) => setFormData({...formData, credit_limit: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, credit_limit: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -405,7 +414,7 @@ export default function AdminSuppliersPage() {
                     type="number"
                     step="0.01"
                     value={formData.opening_balance}
-                    onChange={(e) => setFormData({...formData, opening_balance: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, opening_balance: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -415,7 +424,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.address_line1}
-                    onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -425,7 +434,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -435,7 +444,7 @@ export default function AdminSuppliersPage() {
                   <input
                     type="text"
                     value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -445,7 +454,7 @@ export default function AdminSuppliersPage() {
                   <textarea
                     rows={3}
                     value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -455,7 +464,7 @@ export default function AdminSuppliersPage() {
                     <input
                       type="checkbox"
                       checked={formData.is_active}
-                      onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">Active</span>

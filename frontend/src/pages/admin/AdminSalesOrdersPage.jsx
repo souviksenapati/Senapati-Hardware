@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Plus, Search, Eye, Printer, X, Truck } from 'lucide-react';
 import api from '../../api';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
 export default function AdminSalesOrdersPage() {
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,6 +14,7 @@ export default function AdminSalesOrdersPage() {
   const [formData, setFormData] = useState({
     order_number: '',
     customer_id: null,
+    quotation_id: null,
     order_date: new Date().toISOString().split('T')[0],
     expected_delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     payment_terms: 'cash',
@@ -26,7 +29,29 @@ export default function AdminSalesOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, [statusFilter]);
+
+    // Check for incoming quotation data
+    if (location.state?.fromQuotation) {
+      const q = location.state.fromQuotation;
+      setFormData(prev => ({
+        ...prev,
+        quotation_id: q.quotation_id,
+        customer_id: q.customer_id,
+        gst_type: q.gst_type,
+        notes: q.notes,
+        items: q.items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_percentage: item.discount_percentage,
+          tax_percentage: item.tax_percentage
+        }))
+      }));
+      setShowForm(true);
+      // Clear state to prevent re-triggering on reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [statusFilter, location.state]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -44,7 +69,7 @@ export default function AdminSalesOrdersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.order_number.trim()) {
       alert('Please enter order number');
       return;
@@ -59,7 +84,11 @@ export default function AdminSalesOrdersPage() {
     }
 
     try {
-      await api.post('/sales/orders', formData);
+      const data = {
+        ...formData,
+        order_number: formData.order_number.toUpperCase()
+      };
+      await api.post('/sales/orders', data);
       alert('Sales order created successfully! Stock has been reserved.');
       setShowForm(false);
       resetForm();
@@ -72,7 +101,7 @@ export default function AdminSalesOrdersPage() {
 
   const generateInvoice = async (orderId) => {
     if (!confirm('Generate sales invoice for this order?')) return;
-    
+
     try {
       // Here you would call an API to convert order to invoice
       // For now, just update status
@@ -89,6 +118,7 @@ export default function AdminSalesOrdersPage() {
     setFormData({
       order_number: '',
       customer_id: null,
+      quotation_id: null,
       order_date: new Date().toISOString().split('T')[0],
       expected_delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       payment_terms: 'cash',
@@ -125,28 +155,56 @@ export default function AdminSalesOrdersPage() {
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => {
-      return sum + (item.quantity * item.unit_price);
-    }, 0);
+    let subtotalGross = 0;
+    let totalLineDiscount = 0;
+    let totalTax = 0;
+    let lineTaxableTotal = 0;
 
-    const discountAmount = subtotal * (formData.discount_percentage / 100);
-    const taxableAmount = subtotal - discountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
-    
+    formData.items.forEach(item => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      const itemDiscPct = parseFloat(item.discount_percentage) || 0;
+      const itemTaxPct = parseFloat(item.tax_percentage) || 18;
+
+      if (item.product_id && qty > 0) {
+        const lineGross = qty * price;
+        const lineDiscount = lineGross * (itemDiscPct / 100);
+        const lineTaxable = lineGross - lineDiscount;
+        const lineTax = lineTaxable * (itemTaxPct / 100);
+
+        subtotalGross += lineGross;
+        totalLineDiscount += lineDiscount;
+        lineTaxableTotal += lineTaxable;
+        totalTax += lineTax;
+      }
+    });
+
+    const globalDiscountAmount = lineTaxableTotal * (parseFloat(formData.discount_percentage) || 0) / 100;
+    const taxableAmount = lineTaxableTotal - globalDiscountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
+
     let cgst = 0, sgst = 0, igst = 0;
-    
+
     if (formData.gst_type === 'cgst_sgst') {
-      const gstAmount = taxableAmount * 0.18;
-      cgst = gstAmount / 2;
-      sgst = gstAmount / 2;
+      cgst = totalTax / 2;
+      sgst = totalTax / 2;
     } else {
-      igst = taxableAmount * 0.18;
+      igst = totalTax;
     }
 
-    const totalBeforeRound = taxableAmount + cgst + sgst + igst;
+    const totalBeforeRound = taxableAmount + totalTax;
     const roundOff = Math.round(totalBeforeRound) - totalBeforeRound;
     const total = Math.round(totalBeforeRound);
 
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, roundOff, total };
+    return {
+      subtotal: subtotalGross,
+      discountAmount: totalLineDiscount + globalDiscountAmount,
+      taxableAmount,
+      cgst,
+      sgst,
+      igst,
+      roundOff,
+      total
+    };
   };
 
   const totals = calculateTotals();
@@ -163,8 +221,8 @@ export default function AdminSalesOrdersPage() {
 
   const fetchProducts = async (query) => {
     const res = await api.get('/products', { params: { search: query, limit: 20 } });
-    return res.data.products.map(p => ({ 
-      value: p.id, 
+    return res.data.products.map(p => ({
+      value: p.id,
       label: `${p.name} - ${p.sku} (Stock: ${p.stock})`,
       price: p.price || 0
     }));
@@ -235,14 +293,13 @@ export default function AdminSalesOrdersPage() {
                   <td className="p-4">{ord.expected_delivery_date ? new Date(ord.expected_delivery_date).toLocaleDateString() : '-'}</td>
                   <td className="p-4 text-right font-semibold">₹{ord.total_amount?.toFixed(2)}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      ord.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${ord.status === 'delivered' ? 'bg-green-100 text-green-700' :
                       ord.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                      ord.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                      ord.status === 'confirmed' ? 'bg-purple-100 text-purple-700' :
-                      ord.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
+                        ord.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                          ord.status === 'confirmed' ? 'bg-purple-100 text-purple-700' :
+                            ord.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                      }`}>
                       {ord.status?.toUpperCase()}
                     </span>
                   </td>
@@ -255,9 +312,9 @@ export default function AdminSalesOrdersPage() {
                         <Printer className="w-5 h-5" />
                       </button>
                       {ord.status === 'confirmed' && (
-                        <button 
+                        <button
                           onClick={() => generateInvoice(ord.id)}
-                          className="text-green-600 hover:text-green-800" 
+                          className="text-green-600 hover:text-green-800"
                           title="Generate Invoice"
                         >
                           <Truck className="w-5 h-5" />

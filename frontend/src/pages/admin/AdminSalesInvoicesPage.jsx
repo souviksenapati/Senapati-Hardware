@@ -8,12 +8,15 @@ export default function AdminSalesInvoicesPage() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [formData, setFormData] = useState({
     invoice_number: '',
     customer_id: '',
+    sales_order_id: null,
+    delivery_note_id: null,
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
     payment_terms: 'cash',
@@ -23,8 +26,20 @@ export default function AdminSalesInvoicesPage() {
     gst_type: 'cgst_sgst',
     notes: '',
     terms_conditions: '',
+    eway_bill_no: '',
+    delivery_note_no: '',
+    buyer_order_no: '',
+    consignee_name: '',
+    consignee_address: '',
+    consignee_state: '',
+    consignee_gstin: '',
+    irn: '',
+    ack_no: '',
+    ack_date: '',
     items: [{ product_id: '', quantity: 1, unit_price: 0, discount_percentage: 0, tax_percentage: 18 }]
   });
+
+  const [shipToSameAsBill, setShipToSameAsBill] = useState(true);
 
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -35,22 +50,26 @@ export default function AdminSalesInvoicesPage() {
     contact_person: '',
     email: '',
     phone: '',
-    address: '',
+    address_line1: '',
     city: '',
     state: '',
     pincode: '',
-    gstin: ''
+    gst_number: ''
   });
+
+  const [rawCustomers, setRawCustomers] = useState([]);
+  const [salesOrders, setSalesOrders] = useState([]);
 
   useEffect(() => {
     fetchInvoices();
     fetchCustomers();
     fetchProducts();
+    fetchSalesOrders();
   }, []);
 
   const fetchInvoices = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/sales/invoices', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -64,10 +83,11 @@ export default function AdminSalesInvoicesPage() {
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/b2b-customers/search?limit=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      setRawCustomers(res.data);
       setCustomers(res.data.map(c => ({
         value: c.id,
         label: c.name,
@@ -78,9 +98,63 @@ export default function AdminSalesInvoicesPage() {
     }
   };
 
+  const fetchSalesOrders = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:8000/api/sales/orders?limit=100&status=confirmed', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSalesOrders(res.data.map(so => ({
+        value: so.id,
+        label: `${so.order_number} (${so.customer?.name || 'Unknown'})`,
+        raw: so
+      })));
+    } catch (error) {
+      console.error('Failed to fetch sales orders');
+    }
+  };
+
+  const handleCustomerSelect = (customerId) => {
+    const customer = rawCustomers.find(c => c.id === customerId);
+    if (customer) {
+      setFormData(prev => ({
+        ...prev,
+        customer_id: customerId,
+        consignee_name: shipToSameAsBill ? customer.name : prev.consignee_name,
+        consignee_address: shipToSameAsBill ? `${customer.address_line1}${customer.address_line2 ? ', ' + customer.address_line2 : ''}, ${customer.city}, ${customer.state} - ${customer.pincode}` : prev.consignee_address,
+        consignee_state: shipToSameAsBill ? customer.state : prev.consignee_state,
+        consignee_gstin: shipToSameAsBill ? customer.gst_number : prev.consignee_gstin
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, customer_id: customerId }));
+    }
+  };
+
+  const handleSalesOrderSelect = (orderId) => {
+    const selectedOrder = salesOrders.find(so => so.value === orderId)?.raw;
+    if (selectedOrder) {
+      setFormData(prev => ({
+        ...prev,
+        sales_order_id: orderId,
+        customer_id: selectedOrder.customer_id,
+        gst_type: selectedOrder.gst_type,
+        items: selectedOrder.items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_percentage: item.discount_percentage,
+          tax_percentage: item.tax_percentage
+        })),
+        buyer_order_no: selectedOrder.order_number
+      }));
+      // Also trigger customer address population
+      handleCustomerSelect(selectedOrder.customer_id);
+    }
+  };
+
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -89,6 +163,8 @@ export default function AdminSalesInvoicesPage() {
         label: `${p.name} (${p.sku}) - Stock: ${p.stock} - ₹${p.price}`,
         name: p.name,
         sku: p.sku,
+        hsn_code: p.hsn_code || '',
+        unit: p.unit || 'piece',
         price: parseFloat(p.price),
         stock: p.stock
       })));
@@ -100,19 +176,19 @@ export default function AdminSalesInvoicesPage() {
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post('http://localhost:8000/api/b2b-customers', newCustomer, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Customer created successfully!');
       await fetchCustomers();
-      
+
       // Auto-select new customer
-      setFormData({...formData, customer_id: res.data.id});
+      setFormData({ ...formData, customer_id: res.data.id });
       setNewCustomer({
         name: '', customer_code: '', contact_person: '', email: '', phone: '',
-        address: '', city: '', state: '', pincode: '', gstin: ''
+        address_line1: '', city: '', state: '', pincode: '', gst_number: ''
       });
       setShowCustomerForm(false);
     } catch (error) {
@@ -155,34 +231,52 @@ export default function AdminSalesInvoicesPage() {
   };
 
   const calculateTotals = () => {
-    let subtotal = 0;
+    let subtotalGrossTotal = 0;
+    let totalLineDiscount = 0;
     let totalTax = 0;
+    let lineTaxableTotal = 0;
 
     formData.items.forEach(item => {
       if (item.product_id && item.quantity > 0 && item.unit_price > 0) {
-        const { taxable, taxAmt } = calculateItemTotals(item);
-        subtotal += item.quantity * item.unit_price;
+        const { subtotal, discountAmt, taxable, taxAmt } = calculateItemTotals(item);
+        subtotalGrossTotal += subtotal;
+        totalLineDiscount += discountAmt;
+        lineTaxableTotal += taxable;
         totalTax += taxAmt;
       }
     });
 
-    const discountAmount = subtotal * (formData.discount_percentage / 100);
-    const totalBeforeRound = subtotal - discountAmount + parseFloat(formData.freight_charges || 0) + 
-                            parseFloat(formData.other_charges || 0) + totalTax;
-    
+    const globalDiscountAmount = lineTaxableTotal * (parseFloat(formData.discount_percentage) || 0) / 100;
+    const taxableAmount = lineTaxableTotal - globalDiscountAmount + parseFloat(formData.freight_charges || 0) +
+      parseFloat(formData.other_charges || 0);
+
+    const totalBeforeRound = taxableAmount + totalTax;
     const total = Math.round(totalBeforeRound);
     const roundOff = total - totalBeforeRound;
 
     const cgst = formData.gst_type === 'cgst_sgst' ? totalTax / 2 : 0;
     const sgst = formData.gst_type === 'cgst_sgst' ? totalTax / 2 : 0;
     const igst = formData.gst_type === 'igst' ? totalTax : 0;
+    const effectiveTaxRate = lineTaxableTotal > 0 ? (totalTax / lineTaxableTotal) * 100 : 0;
 
-    return { subtotal, discountAmount, totalTax, cgst, sgst, igst, roundOff, total };
+    return {
+      subtotal: subtotalGrossTotal,
+      discountAmount: totalLineDiscount + globalDiscountAmount,
+      totalTax,
+      cgst,
+      sgst,
+      igst,
+      roundOff,
+      total,
+      effectiveTaxRate
+    };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    console.log('Form submitted with data:', formData);
+
     if (!formData.invoice_number || !formData.customer_id) {
       toast.error('Please fill all required fields');
       return;
@@ -194,23 +288,361 @@ export default function AdminSalesInvoicesPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:8000/api/sales/invoices', formData, {
+      const token = sessionStorage.getItem('token');
+
+      // Clean up data: convert empty strings to null for optional date fields
+      const cleanedData = {
+        ...formData,
+        invoice_number: formData.invoice_number.toUpperCase(),
+        due_date: formData.due_date || null,
+        ack_date: formData.ack_date || null
+      };
+
+      console.log('Sending invoice data to API...', cleanedData);
+      const response = await axios.post('http://localhost:8000/api/sales/invoices', cleanedData, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log('Invoice created successfully:', response.data);
       toast.success('Sales invoice created successfully! Inventory updated.');
       setShowForm(false);
       resetForm();
       fetchInvoices();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create sales invoice');
+      console.error('Invoice creation error:', error);
+      console.error('Error response:', error.response?.data);
+
+      // Show detailed validation errors if available
+      if (error.response?.status === 422 && error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Pydantic validation errors
+          const errorMsg = detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+          toast.error(`Validation Error: ${errorMsg}`);
+        } else {
+          toast.error(detail);
+        }
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to create sales invoice');
+      }
     }
+  };
+
+  const handleUpdateInvoiceStatus = async (invoiceId, status) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.put(`http://localhost:8000/api/sales/invoices/${invoiceId}`, { status }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Invoice status updated');
+      fetchInvoices();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update invoice status');
+    }
+  };
+
+  const numberToWords = (num) => {
+    const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const n = ('0000000' + num).substr(-7).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+    if (!n) return '';
+    let str = '';
+    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Lakh ' : '';
+    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Thousand ' : '';
+    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Hundred ' : '';
+    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'and ' : '';
+    str += (n[5] != 0) ? (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+    return str + 'Only';
+  };
+
+  const handlePrintInvoice = async (invoice) => {
+    let settings = {};
+    try {
+      const res = await axios.get('http://localhost:8000/api/admin/settings', {
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` }
+      });
+      (res.data || []).forEach(item => { settings[item.key] = item.value; });
+    } catch (e) { console.error('Settings load fail', e); }
+
+    const items = invoice.items || [];
+
+    // Calculate GST Breakdown grouped by HSN
+    const hsnBreakdown = {};
+    items.forEach(item => {
+      const hsn = item.product?.hsn_code || 'N/A';
+      if (!hsnBreakdown[hsn]) {
+        hsnBreakdown[hsn] = { taxable: 0, cgst: 0, sgst: 0, igst: 0, rate: item.tax_percentage };
+      }
+      hsnBreakdown[hsn].taxable += parseFloat(item.taxable_amount || 0);
+      hsnBreakdown[hsn].cgst += parseFloat(item.cgst_amount || 0);
+      hsnBreakdown[hsn].sgst += parseFloat(item.sgst_amount || 0);
+      hsnBreakdown[hsn].igst += parseFloat(item.igst_amount || 0);
+    });
+
+    const rowsHtml = items.map((item, index) => `
+      <tr>
+        <td style="text-align:center;">${index + 1}</td>
+        <td>
+          <div style="font-weight:bold;">${item.product?.name || item.product_id || '-'}</div>
+        </td>
+        <td style="text-align:center;">${item.product?.hsn_code || 'N/A'}</td>
+        <td style="text-align:center;">${parseFloat(item.quantity).toFixed(0)} ${item.product?.unit || ''}</td>
+        <td style="text-align:right;">${parseFloat(item.unit_price).toFixed(2)}</td>
+        <td style="text-align:right;">${parseFloat(item.taxable_amount).toFixed(2)}</td>
+        <td style="text-align:center;">${parseFloat(item.tax_percentage).toFixed(2)}%</td>
+        <td style="text-align:right;">${parseFloat(item.cgst_amount || 0).toFixed(2)}</td>
+        <td style="text-align:right;">${parseFloat(item.sgst_amount || 0).toFixed(2)}</td>
+        <td style="text-align:right;">${parseFloat(item.igst_amount || 0).toFixed(2)}</td>
+        <td style="text-align:right;font-weight:bold;">${parseFloat(item.line_total).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    const hsnRowsHtml = Object.entries(hsnBreakdown).map(([hsn, data]) => `
+      <tr>
+        <td>${hsn}</td>
+        <td style="text-align:right;">${data.taxable.toFixed(2)}</td>
+        <td style="text-align:center;">${(data.rate / 2).toFixed(2)}%</td>
+        <td style="text-align:right;">${data.cgst.toFixed(2)}</td>
+        <td style="text-align:center;">${(data.rate / 2).toFixed(2)}%</td>
+        <td style="text-align:right;">${data.sgst.toFixed(2)}</td>
+        <td style="text-align:right;">${(data.cgst + data.sgst + data.igst).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    const upiLink = `upi://pay?pa=${settings.bank_upi || ''}&pn=${settings.store_name || ''}&am=${invoice.total}&cu=INR`;
+    const qrCodeUrl = `https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=${encodeURIComponent(upiLink)}`;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Tax Invoice - ${invoice.invoice_number}</title>
+          <style>
+            @page { size: A4; margin: 5mm; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; color: #000; margin: 0; padding: 10px; border: 1px solid #000; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 0px; }
+            .header-table td { border: 1px solid #000; padding: 5px; vertical-align: top; width: 33.33%; }
+            .title { text-align: center; font-size: 16px; font-weight: bold; border: 1px solid #000; padding: 5px; background: #eee; }
+            .main-table { width: 100%; border-collapse: collapse; }
+            .main-table th { border: 1px solid #000; padding: 4px; background: #f2f2f2; font-size: 10px; }
+            .main-table td { border: 1px solid #000; padding: 4px; height: 20px; }
+            .gst-table { width: 60%; border-collapse: collapse; margin-top: 10px; }
+            .gst-table th, .gst-table td { border: 1px solid #000; padding: 3px; font-size: 9px; }
+            .footer-section { display: flex; border: 1px solid #000; border-top: 0; }
+            .footer-left { flex: 1; padding: 8px; border-right: 1px solid #000; }
+            .footer-right { width: 250px; padding: 8px; text-align: right; }
+            .na { color: #888; font-style: italic; }
+            .bold { font-weight: bold; }
+            .bank-details { font-size: 10px; line-height: 1.4; }
+          </style>
+        </head>
+        <body>
+          <div class="title">TAX INVOICE</div>
+          <table class="header-table">
+            <tr>
+              <td rowspan="2">
+                ${settings.store_logo_url ? `<img src="${settings.store_logo_url}" style="max-height:60px;margin-bottom:5px;"><br>` : ''}
+                <div class="bold" style="font-size:14px;">${settings.store_name || 'YOUR COMPANY NAME'}</div>
+                <div>${settings.store_address || ''}</div>
+                <div>GSTIN/UIN: <span class="bold">${settings.company_gstin || 'N/A'}</span></div>
+                <div>State Name: Bhubaneswar, Odisha, Code: 21</div>
+                <div>Contact: ${settings.store_phone || ''}</div>
+                <div>Email: ${settings.store_email || ''}</div>
+              </td>
+              <td>
+                <div>Invoice No.</div>
+                <div class="bold">${invoice.invoice_number}</div>
+              </td>
+              <td>
+                <div>Dated</div>
+                <div class="bold">${new Date(invoice.invoice_date).toLocaleDateString('en-GB')}</div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div>Delivery Note</div>
+                <div class="bold">${invoice.delivery_note_no || 'N/A'}</div>
+              </td>
+              <td>
+                <div>Mode/Terms of Payment</div>
+                <div class="bold text-uppercase">${invoice.payment_terms.replace('_', ' ')}</div>
+              </td>
+            </tr>
+            <tr>
+              <td rowspan="2">
+                <div style="font-size:10px;color:#666;">Consignee (Ship to)</div>
+                <div class="bold">${invoice.consignee_name || (invoice.customer?.name || 'N/A')}</div>
+                <div>${invoice.consignee_address || (invoice.customer?.address_line1 || '')}</div>
+                <div>GSTIN/UIN: <span class="bold">${invoice.consignee_gstin || (invoice.customer?.gst_number || 'N/A')}</span></div>
+                <div>State Name: ${invoice.consignee_state || (invoice.customer?.state || 'N/A')}</div>
+              </td>
+              <td>
+                <div>Reference No. & Date.</div>
+                <div class="bold">N/A</div>
+              </td>
+              <td>
+                <div>Other References</div>
+                <div class="bold">N/A</div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div>Buyer's Order No.</div>
+                <div class="bold">${invoice.buyer_order_no || 'N/A'}</div>
+              </td>
+              <td>
+                <div>Dated</div>
+                <div class="bold">N/A</div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="font-size:10px;color:#666;">Buyer (Bill to)</div>
+                <div class="bold">${invoice.customer?.name || 'N/A'}</div>
+                <div>${invoice.customer?.address_line1 || ''}</div>
+                <div>GSTIN/UIN: <span class="bold">${invoice.customer?.gst_number || 'N/A'}</span></div>
+                <div>State Name: ${invoice.customer?.state || 'N/A'}</div>
+              </td>
+              <td>
+                <div>Dispatch Doc No.</div>
+                <div class="bold">N/A</div>
+              </td>
+              <td>
+                <div>Delivery Note Date</div>
+                <div class="bold">N/A</div>
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>
+                <div>Dispatched through</div>
+                <div class="bold">N/A</div>
+              </td>
+              <td>
+                <div>Destination</div>
+                <div class="bold">N/A</div>
+              </td>
+            </tr>
+          </table>
+
+          <table class="main-table">
+            <thead>
+              <tr>
+                <th width="30">SI No.</th>
+                <th>Description of Goods</th>
+                <th>HSN/SAC</th>
+                <th>Quantity</th>
+                <th>Rate</th>
+                <th>Taxable Value</th>
+                <th>GST %</th>
+                <th>CGST</th>
+                <th>SGST</th>
+                <th>IGST</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+              <!-- Fill empty rows to maintain height -->
+              ${Array(Math.max(0, 8 - items.length)).fill(0).map(() => '<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
+              <tr class="bold">
+                <td colspan="3" style="text-align:right;">Total</td>
+                <td style="text-align:center;">${items.reduce((sum, i) => sum + parseFloat(i.quantity), 0).toFixed(0)}</td>
+                <td></td>
+                <td style="text-align:right;">${parseFloat(invoice.subtotal).toFixed(2)}</td>
+                <td></td>
+                <td style="text-align:right;">${parseFloat(invoice.cgst_amount).toFixed(2)}</td>
+                <td style="text-align:right;">${parseFloat(invoice.sgst_amount).toFixed(2)}</td>
+                <td style="text-align:right;">${parseFloat(invoice.igst_amount).toFixed(2)}</td>
+                <td style="text-align:right;">${parseFloat(invoice.total).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="border:1px solid #000; border-top:0; padding:5px;">
+            <div>Amount Chargeable (in words)</div>
+            <div class="bold">INR ${numberToWords(Math.round(invoice.total))}</div>
+          </div>
+
+          <table class="gst-table">
+            <thead>
+              <tr>
+                <th rowspan="2">HSN/SAC</th>
+                <th rowspan="2">Taxable Value</th>
+                <th colspan="2">Central Tax</th>
+                <th colspan="2">State Tax</th>
+                <th rowspan="2">Total Tax Amount</th>
+              </tr>
+              <tr>
+                <th>Rate</th>
+                <th>Amount</th>
+                <th>Rate</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${hsnRowsHtml}
+              <tr class="bold">
+                <td>Total</td>
+                <td style="text-align:right;">${parseFloat(invoice.subtotal).toFixed(2)}</td>
+                <td></td>
+                <td style="text-align:right;">${parseFloat(invoice.cgst_amount).toFixed(2)}</td>
+                <td></td>
+                <td style="text-align:right;">${parseFloat(invoice.sgst_amount).toFixed(2)}</td>
+                <td style="text-align:right;">${(parseFloat(invoice.cgst_amount) + parseFloat(invoice.sgst_amount)).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top:5px; font-size:9px;">Tax Amount (in words) : <span class="bold">INR ${numberToWords(Math.round(parseFloat(invoice.cgst_amount) + parseFloat(invoice.sgst_amount) + parseFloat(invoice.igst_amount)))}</span></div>
+
+          <div class="footer-section" style="margin-top:10px;">
+            <div class="footer-left">
+              <div class="bold">Company's Bank Details</div>
+              <div class="bank-details">
+                Bank Name: <span class="bold">${settings.bank_name || 'N/A'}</span><br>
+                A/c No.: <span class="bold">${settings.bank_account_no || 'N/A'}</span><br>
+                Branch & IFSC Code: <span class="bold">${settings.bank_branch || ''} & ${settings.bank_ifsc || ''}</span>
+              </div>
+              <div style="margin-top: 10px;">
+                <div class="bold" style="text-decoration:underline;">Declaration</div>
+                <div style="font-size:9px;">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
+              </div>
+              <div style="margin-top: 10px; font-size: 10px;">
+                <b>PAN No:</b> ${settings.company_pan || 'N/A'}
+              </div>
+            </div>
+            <div class="footer-right">
+              <img src="${qrCodeUrl}" style="margin-bottom:5px;"><br>
+              <div style="font-size:9px;">for ${settings.store_name || 'YOUR COMPANY NAME'}</div>
+              <div style="margin-top:40px; position: relative;">
+                ${settings.signature_stamp_url ? `<img src="${settings.signature_stamp_url}" style="position:absolute; bottom:0; right:0; max-height:60px; opacity:0.8;">` : ''}
+                <div style="margin-top:50px;" class="bold">Authorized Signatory</div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center; font-size:10px; margin-top:5px;">This is a Computer Generated Invoice</div>
+          
+          <script>
+            window.onload = function() { 
+              setTimeout(() => {
+                window.print();
+                window.close(); 
+              }, 800);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
   };
 
   const resetForm = () => {
     setFormData({
       invoice_number: '',
       customer_id: '',
+      sales_order_id: null,
+      delivery_note_id: null,
       invoice_date: new Date().toISOString().split('T')[0],
       due_date: '',
       payment_terms: 'cash',
@@ -220,18 +652,31 @@ export default function AdminSalesInvoicesPage() {
       gst_type: 'cgst_sgst',
       notes: '',
       terms_conditions: '',
+      eway_bill_no: '',
+      delivery_note_no: '',
+      buyer_order_no: '',
+      consignee_name: '',
+      consignee_address: '',
+      consignee_state: '',
+      consignee_gstin: '',
+      irn: '',
+      ack_no: '',
+      ack_date: '',
       items: [{ product_id: '', quantity: 1, unit_price: 0, discount_percentage: 0, tax_percentage: 18 }]
     });
+    setShipToSameAsBill(true);
   };
 
   const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         inv.customer?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const query = searchTerm.toLowerCase();
+    const invoiceNumber = (inv.invoice_number || '').toLowerCase();
+    const customerName = (inv.customer?.name || '').toLowerCase();
+    const matchesSearch = invoiceNumber.includes(query) || customerName.includes(query);
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const { subtotal, discountAmount, totalTax, cgst, sgst, igst, roundOff, total } = calculateTotals();
+  const { subtotal, discountAmount, totalTax, cgst, sgst, igst, roundOff, total, effectiveTaxRate } = calculateTotals();
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -306,22 +751,24 @@ export default function AdminSalesInvoicesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        inv.status === 'paid' ? 'bg-green-100 text-green-800' :
-                        inv.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                        inv.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                        inv.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {inv.status}
-                      </span>
+                      <select
+                        value={inv.status || 'draft'}
+                        onChange={(e) => handleUpdateInvoiceStatus(inv.id, e.target.value)}
+                        className="border rounded px-2 py-1 text-xs"
+                      >
+                        <option value="draft">DRAFT</option>
+                        <option value="sent">SENT</option>
+                        <option value="partially_paid">PARTIALLY PAID</option>
+                        <option value="paid">PAID</option>
+                        <option value="overdue">OVERDUE</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800">
+                        <button type="button" onClick={() => setSelectedInvoice(inv)} className="text-blue-600 hover:text-blue-800">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="text-gray-600 hover:text-gray-800">
+                        <button type="button" onClick={() => handlePrintInvoice(inv)} className="text-gray-600 hover:text-gray-800">
                           <Printer className="w-4 h-4" />
                         </button>
                       </div>
@@ -337,15 +784,33 @@ export default function AdminSalesInvoicesPage() {
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-6">Create Sales Invoice</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Import Data</p>
+                  <p className="text-xs text-blue-700">Select an existing sales order to auto-fill the invoice</p>
+                </div>
+              </div>
+              <div className="w-64">
+                <SearchableDropdown
+                  options={salesOrders}
+                  value={formData.sales_order_id}
+                  onChange={handleSalesOrderSelect}
+                  placeholder="Select Sales Order"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Invoice Number *</label>
                 <input
                   type="text"
                   value={formData.invoice_number}
-                  onChange={(e) => setFormData({...formData, invoice_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -366,7 +831,7 @@ export default function AdminSalesInvoicesPage() {
                 <SearchableDropdown
                   options={customers}
                   value={formData.customer_id}
-                  onChange={(value) => setFormData({...formData, customer_id: value})}
+                  onChange={handleCustomerSelect}
                   placeholder="Select customer"
                 />
               </div>
@@ -376,7 +841,7 @@ export default function AdminSalesInvoicesPage() {
                 <input
                   type="date"
                   value={formData.invoice_date}
-                  onChange={(e) => setFormData({...formData, invoice_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -387,7 +852,7 @@ export default function AdminSalesInvoicesPage() {
                 <input
                   type="date"
                   value={formData.due_date}
-                  onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
@@ -396,7 +861,7 @@ export default function AdminSalesInvoicesPage() {
                 <label className="block text-sm font-medium mb-1">Payment Terms</label>
                 <select
                   value={formData.payment_terms}
-                  onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 >
                   <option value="cash">Cash</option>
@@ -411,13 +876,136 @@ export default function AdminSalesInvoicesPage() {
                 <label className="block text-sm font-medium mb-1">GST Type</label>
                 <select
                   value={formData.gst_type}
-                  onChange={(e) => setFormData({...formData, gst_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, gst_type: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 >
                   <option value="cgst_sgst">CGST + SGST (Intra-state)</option>
                   <option value="igst">IGST (Inter-state)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Meta Details Section */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-semibold mb-3 border-b pb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600" /> Invoice Meta Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">E-Way Bill No.</label>
+                  <input
+                    type="text"
+                    value={formData.eway_bill_no}
+                    onChange={(e) => setFormData({ ...formData, eway_bill_no: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Delivery Note No.</label>
+                  <input
+                    type="text"
+                    value={formData.delivery_note_no}
+                    onChange={(e) => setFormData({ ...formData, delivery_note_no: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Buyer Order No.</label>
+                  <input
+                    type="text"
+                    value={formData.buyer_order_no}
+                    onChange={(e) => setFormData({ ...formData, buyer_order_no: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">IRN (E-Invoice)</label>
+                  <input
+                    type="text"
+                    value={formData.irn}
+                    onChange={(e) => setFormData({ ...formData, irn: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ack No.</label>
+                  <input
+                    type="text"
+                    value={formData.ack_no}
+                    onChange={(e) => setFormData({ ...formData, ack_no: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ack Date</label>
+                  <input
+                    type="date"
+                    value={formData.ack_date}
+                    onChange={(e) => setFormData({ ...formData, ack_date: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping Details Section */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-3 border-b pb-2">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <div className="w-4 h-4 text-green-600">🚚</div> Shipping Details (Consignee)
+                </h3>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={shipToSameAsBill}
+                    onChange={(e) => setShipToSameAsBill(e.target.checked)}
+                    className="rounded text-blue-600"
+                  />
+                  Same as Billing
+                </label>
+              </div>
+
+              {!shipToSameAsBill && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">Consignee Name</label>
+                    <input
+                      type="text"
+                      value={formData.consignee_name}
+                      onChange={(e) => setFormData({ ...formData, consignee_name: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg bg-white"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">Address</label>
+                    <textarea
+                      rows={2}
+                      value={formData.consignee_address}
+                      onChange={(e) => setFormData({ ...formData, consignee_address: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">State & State Code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Maharashtra (27)"
+                      value={formData.consignee_state}
+                      onChange={(e) => setFormData({ ...formData, consignee_state: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">GSTIN</label>
+                    <input
+                      type="text"
+                      value={formData.consignee_gstin}
+                      onChange={(e) => setFormData({ ...formData, consignee_gstin: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t pt-6">
@@ -438,7 +1026,8 @@ export default function AdminSalesInvoicesPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-2 py-2 text-left text-xs font-medium">Product</th>
-                      <th className="px-2 py-2 text-left text-xs font-medium">Qty</th>
+                      <th className="px-2 py-2 text-left text-xs font-medium">HSN</th>
+                      <th className="px-2 py-2 text-left text-xs font-medium">Qty/Unit</th>
                       <th className="px-2 py-2 text-left text-xs font-medium">Price</th>
                       <th className="px-2 py-2 text-left text-xs font-medium">Disc %</th>
                       <th className="px-2 py-2 text-left text-xs font-medium">Taxable</th>
@@ -465,13 +1054,19 @@ export default function AdminSalesInvoicesPage() {
                             />
                           </td>
                           <td className="px-2 py-2">
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 border rounded"
-                              min="1"
-                            />
+                            <span className="text-xs text-gray-500">{products.find(p => p.value === item.product_id)?.hsn_code || '-'}</span>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                                className="w-20 px-2 py-1 border rounded"
+                                min="1"
+                              />
+                              <span className="text-[10px] text-gray-400 text-center">{products.find(p => p.value === item.product_id)?.unit || ''}</span>
+                            </div>
                           </td>
                           <td className="px-2 py-2">
                             <input
@@ -529,7 +1124,7 @@ export default function AdminSalesInvoicesPage() {
                   <input
                     type="number"
                     value={formData.discount_percentage}
-                    onChange={(e) => setFormData({...formData, discount_percentage: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, discount_percentage: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -539,7 +1134,7 @@ export default function AdminSalesInvoicesPage() {
                   <input
                     type="number"
                     value={formData.freight_charges}
-                    onChange={(e) => setFormData({...formData, freight_charges: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, freight_charges: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -549,7 +1144,7 @@ export default function AdminSalesInvoicesPage() {
                   <input
                     type="number"
                     value={formData.other_charges}
-                    onChange={(e) => setFormData({...formData, other_charges: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, other_charges: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -577,17 +1172,17 @@ export default function AdminSalesInvoicesPage() {
                   {formData.gst_type === 'cgst_sgst' ? (
                     <>
                       <div className="flex justify-between text-sm">
-                        <span>CGST (9%):</span>
+                        <span>CGST ({(effectiveTaxRate / 2).toFixed(2)}%):</span>
                         <span className="font-semibold">₹{cgst.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>SGST (9%):</span>
+                        <span>SGST ({(effectiveTaxRate / 2).toFixed(2)}%):</span>
                         <span className="font-semibold">₹{sgst.toFixed(2)}</span>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between text-sm">
-                      <span>IGST (18%):</span>
+                      <span>IGST ({effectiveTaxRate.toFixed(2)}%):</span>
                       <span className="font-semibold">₹{igst.toFixed(2)}</span>
                     </div>
                   )}
@@ -608,7 +1203,7 @@ export default function AdminSalesInvoicesPage() {
                 <label className="block text-sm font-medium mb-1">Notes</label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   rows="3"
                 />
@@ -617,7 +1212,7 @@ export default function AdminSalesInvoicesPage() {
                 <label className="block text-sm font-medium mb-1">Terms & Conditions</label>
                 <textarea
                   value={formData.terms_conditions}
-                  onChange={(e) => setFormData({...formData, terms_conditions: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, terms_conditions: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   rows="3"
                 />
@@ -652,6 +1247,7 @@ export default function AdminSalesInvoicesPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Quick Add Customer</h2>
                 <button
+                  type="button"
                   onClick={() => setShowCustomerForm(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -666,7 +1262,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.name}
-                      onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -677,7 +1273,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.customer_code}
-                      onChange={(e) => setNewCustomer({...newCustomer, customer_code: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, customer_code: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -688,7 +1284,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.contact_person}
-                      onChange={(e) => setNewCustomer({...newCustomer, contact_person: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, contact_person: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -698,18 +1294,19 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="email"
                       value={newCustomer.email}
-                      onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <label className="block text-sm font-medium mb-1">Phone *</label>
                     <input
                       type="tel"
                       value={newCustomer.phone}
-                      onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
+                      required
                     />
                   </div>
 
@@ -717,8 +1314,8 @@ export default function AdminSalesInvoicesPage() {
                     <label className="block text-sm font-medium mb-1">GSTIN</label>
                     <input
                       type="text"
-                      value={newCustomer.gstin}
-                      onChange={(e) => setNewCustomer({...newCustomer, gstin: e.target.value})}
+                      value={newCustomer.gst_number}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, gst_number: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       placeholder="e.g., 27AAAAA0000A1Z5"
                     />
@@ -728,8 +1325,8 @@ export default function AdminSalesInvoicesPage() {
                     <label className="block text-sm font-medium mb-1">Address</label>
                     <input
                       type="text"
-                      value={newCustomer.address}
-                      onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                      value={newCustomer.address_line1}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, address_line1: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -739,7 +1336,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.city}
-                      onChange={(e) => setNewCustomer({...newCustomer, city: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -749,7 +1346,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.state}
-                      onChange={(e) => setNewCustomer({...newCustomer, state: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -759,7 +1356,7 @@ export default function AdminSalesInvoicesPage() {
                     <input
                       type="text"
                       value={newCustomer.pincode}
-                      onChange={(e) => setNewCustomer({...newCustomer, pincode: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, pincode: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -782,6 +1379,25 @@ export default function AdminSalesInvoicesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Invoice Details</h3>
+              <button type="button" onClick={() => setSelectedInvoice(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-4 space-y-2 text-sm">
+              <p><span className="font-medium">Invoice #:</span> {selectedInvoice.invoice_number}</p>
+              <p><span className="font-medium">Customer:</span> {selectedInvoice.customer?.name || '-'}</p>
+              <p><span className="font-medium">Date:</span> {new Date(selectedInvoice.invoice_date).toLocaleDateString()}</p>
+              <p><span className="font-medium">Status:</span> {selectedInvoice.status}</p>
+              <p><span className="font-medium">Total:</span> ₹{parseFloat(selectedInvoice.total || 0).toFixed(2)}</p>
+              <p><span className="font-medium">Balance Due:</span> ₹{parseFloat(selectedInvoice.balance_due || 0).toFixed(2)}</p>
             </div>
           </div>
         </div>

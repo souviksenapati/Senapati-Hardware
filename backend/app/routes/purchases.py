@@ -68,7 +68,7 @@ def create_purchase_order(
         total=total,
         notes=po.notes,
         terms_conditions=po.terms_conditions,
-        created_by=current_user.get("id")
+        created_by=current_user.id
     )
     db.add(db_po)
     db.flush()
@@ -223,7 +223,7 @@ def create_grn(
                 product_id=item.product_id,
                 change=item.received_quantity,
                 reason=f"GRN: {grn.grn_number}",
-                performed_by=current_user.get("email"),
+                performed_by=current_user.email,
                 transaction_type="inward",
                 invoice_number=grn.supplier_invoice_number,
                 supplier_name=db.query(Supplier).filter(Supplier.id == grn.supplier_id).first().name,
@@ -395,7 +395,8 @@ def create_purchase_invoice(
     # Update supplier balance
     supplier = db.query(Supplier).filter(Supplier.id == invoice.supplier_id).first()
     if supplier:
-        supplier.current_balance += total
+        from decimal import Decimal as D
+        supplier.current_balance += D(str(total))
     
     db.commit()
     db.refresh(db_invoice)

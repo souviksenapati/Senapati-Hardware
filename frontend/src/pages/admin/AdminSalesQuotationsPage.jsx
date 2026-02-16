@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Eye, Printer, X, CheckCircle } from 'lucide-react';
 import api from '../../api';
 import axios from 'axios';
@@ -6,23 +7,25 @@ import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
 
 export default function AdminSalesQuotationsPage() {
+  const navigate = useNavigate();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [newCustomer, setNewCustomer] = useState({
     name: '',
     customer_code: '',
     contact_person: '',
     email: '',
     phone: '',
-    address: '',
+    address_line1: '',
     city: '',
     state: '',
     pincode: '',
-    gstin: ''
+    gst_number: ''
   });
   const [formData, setFormData] = useState({
     quotation_number: '',
@@ -58,44 +61,78 @@ export default function AdminSalesQuotationsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.quotation_number.trim()) {
-      alert('Please enter quotation number');
+      toast.error('Please enter quotation number');
       return;
     }
     if (!formData.customer_id) {
-      alert('Please select a customer');
+      toast.error('Please select a customer');
       return;
     }
     if (formData.items.length === 0 || !formData.items[0].product_id) {
-      alert('Please add at least one item');
+      toast.error('Please add at least one item');
       return;
     }
 
     try {
-      await api.post('/sales/quotations', formData);
-      alert('Sales quotation created successfully!');
+      // Clean up data: convert empty/null values to proper nulls for optional date fields
+      const cleanedData = {
+        ...formData,
+        quotation_number: formData.quotation_number.toUpperCase(),
+        valid_until: formData.valid_until || null,
+        customer_id: formData.customer_id || null
+      };
+
+      await api.post('/sales/quotations', cleanedData);
+      toast.success('Sales quotation created successfully!');
       setShowForm(false);
       resetForm();
       fetchQuotations();
     } catch (error) {
       console.error('Failed to create quotation:', error);
-      alert(error.response?.data?.detail || 'Failed to create sales quotation');
+      console.error('Error response:', error.response?.data);
+
+      // Handle validation errors properly
+      if (error.response?.status === 422 && error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          const errorMsg = detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+          toast.error(`Validation Error: ${errorMsg}`);
+        } else {
+          toast.error(detail);
+        }
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to create sales quotation');
+      }
     }
   };
 
   const convertToOrder = async (quotationId) => {
+    const quotation = quotations.find(q => q.id === quotationId);
+    if (!quotation) return;
+
     if (!confirm('Convert this quotation to a sales order?')) return;
-    
+
     try {
-      // Here you would call an API to convert quotation to order
-      // For now, just update status
       await api.put(`/sales/quotations/${quotationId}`, { status: 'accepted' });
-      alert('Quotation accepted! You can now create a sales order.');
-      fetchQuotations();
+      toast.success('Quotation accepted!');
+
+      // Navigate to Sales Order page with quotation data
+      navigate('/admin/sales-orders', {
+        state: {
+          fromQuotation: {
+            quotation_id: quotation.id,
+            customer_id: quotation.customer_id,
+            items: quotation.items,
+            gst_type: quotation.gst_type,
+            notes: `Converted from Quotation: ${quotation.quotation_number}`
+          }
+        }
+      });
     } catch (error) {
       console.error('Failed to convert quotation:', error);
-      alert('Failed to convert quotation');
+      toast.error('Failed to convert quotation');
     }
   };
 
@@ -138,46 +175,77 @@ export default function AdminSalesQuotationsPage() {
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => {
-      return sum + (item.quantity * item.unit_price);
-    }, 0);
+    let subtotalGross = 0;
+    let totalLineDiscount = 0;
+    let totalTax = 0;
+    let lineTaxableTotal = 0;
 
-    const discountAmount = subtotal * (formData.discount_percentage / 100);
-    const taxableAmount = subtotal - discountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
-    
-    let cgst = 0, sgst = 0, igst = 0;
-    
-    if (formData.gst_type === 'cgst_sgst') {
-      const gstAmount = taxableAmount * 0.18;
-      cgst = gstAmount / 2;
-      sgst = gstAmount / 2;
-    } else {
-      igst = taxableAmount * 0.18;
-    }
+    formData.items.forEach(item => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      const itemDiscPct = parseFloat(item.discount_percentage) || 0;
+      const itemTaxPct = parseFloat(item.tax_percentage) || 18;
 
-    const totalBeforeRound = taxableAmount + cgst + sgst + igst;
+      if (item.product_id && qty > 0) {
+        const lineGross = qty * price;
+        const lineDiscount = lineGross * (itemDiscPct / 100);
+        const lineTaxable = lineGross - lineDiscount;
+        const lineTax = lineTaxable * (itemTaxPct / 100);
+
+        subtotalGross += lineGross;
+        totalLineDiscount += lineDiscount;
+        lineTaxableTotal += lineTaxable;
+        totalTax += lineTax;
+      }
+    });
+
+    const globalDiscountAmount = lineTaxableTotal * (parseFloat(formData.discount_percentage) || 0) / 100;
+    const charges = parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
+    const taxableAmount = lineTaxableTotal - globalDiscountAmount + charges;
+
+    const cgst = formData.gst_type === 'cgst_sgst' ? totalTax / 2 : 0;
+    const sgst = formData.gst_type === 'cgst_sgst' ? totalTax / 2 : 0;
+    const igst = formData.gst_type === 'igst' ? totalTax : 0;
+
+    const totalBeforeRound = taxableAmount + totalTax;
     const roundOff = Math.round(totalBeforeRound) - totalBeforeRound;
     const total = Math.round(totalBeforeRound);
+    const effectiveTaxRate = lineTaxableTotal > 0 ? (totalTax / lineTaxableTotal) * 100 : 0;
 
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, roundOff, total };
+    return {
+      subtotal: subtotalGross,
+      discountAmount: totalLineDiscount + globalDiscountAmount,
+      taxableAmount,
+      cgst,
+      sgst,
+      igst,
+      roundOff,
+      total,
+      effectiveTaxRate
+    };
   };
 
   const totals = calculateTotals();
 
-  const filteredQuotations = quotations.filter(quot =>
-    quot.quotation_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quot.customer?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuotations = quotations.filter((quot) => {
+    const query = searchTerm.toLowerCase();
+    const quotationNumber = (quot.quotation_number || '').toLowerCase();
+    const customerName = (quot.customer?.name || '').toLowerCase();
+    return quotationNumber.includes(query) || customerName.includes(query);
+  });
 
   const fetchCustomers = async (query) => {
-    const res = await api.get('/b2b-customers/search', { params: { query } });
-    return res.data.map(c => ({ value: c.id, label: `${c.customer_name} (${c.customer_code})` }));
+    const res = await api.get('/b2b-customers/search', { params: { q: query } });
+    return res.data.map((customer) => ({
+      value: customer.id,
+      label: customer.label || `${customer.name} (${customer.customer_code})`
+    }));
   };
 
   const fetchProducts = async (query) => {
-    const res = await api.get('/products', { params: { search: query, limit: 20 } });
-    return res.data.products.map(p => ({ 
-      value: p.id, 
+    const res = await api.get('/products', { params: { search: query, page_size: 20 } });
+    return res.data.products.map(p => ({
+      value: p.id,
       label: `${p.name} - ${p.sku} (Stock: ${p.stock})`,
       price: p.price || 0
     }));
@@ -186,22 +254,32 @@ export default function AdminSalesQuotationsPage() {
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post('http://localhost:8000/api/b2b-customers', newCustomer, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Customer created successfully!');
-      
+
       // Auto-select new customer
-      setFormData({...formData, customer_id: res.data.id});
+      setFormData({ ...formData, customer_id: res.data.id });
       setNewCustomer({
         name: '', customer_code: '', contact_person: '', email: '', phone: '',
-        address: '', city: '', state: '', pincode: '', gstin: ''
+        address_line1: '', city: '', state: '', pincode: '', gst_number: ''
       });
       setShowCustomerForm(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create customer');
+    }
+  };
+
+  const handleUpdateQuotationStatus = async (quotationId, status) => {
+    try {
+      await api.put(`/sales/quotations/${quotationId}`, { status });
+      toast.success('Quotation status updated');
+      fetchQuotations();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update status');
     }
   };
 
@@ -264,33 +342,35 @@ export default function AdminSalesQuotationsPage() {
               filteredQuotations.map(quot => (
                 <tr key={quot.id} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-medium text-gray-900">{quot.quotation_number}</td>
-                  <td className="p-4">{quot.customer?.customer_name || '-'}</td>
+                  <td className="p-4">{quot.customer?.name || '-'}</td>
                   <td className="p-4">{new Date(quot.quotation_date).toLocaleDateString()}</td>
-                  <td className="p-4">{new Date(quot.valid_until).toLocaleDateString()}</td>
-                  <td className="p-4 text-right font-semibold">₹{quot.total_amount?.toFixed(2)}</td>
+                  <td className="p-4">{quot.valid_until ? new Date(quot.valid_until).toLocaleDateString() : '-'}</td>
+                  <td className="p-4 text-right font-semibold">₹{parseFloat(quot.total || 0).toFixed(2)}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      quot.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                      quot.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      quot.status === 'expired' ? 'bg-gray-100 text-gray-700' :
-                      quot.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {quot.status?.toUpperCase()}
-                    </span>
+                    <select
+                      value={quot.status || 'draft'}
+                      onChange={(e) => handleUpdateQuotationStatus(quot.id, e.target.value)}
+                      className="border rounded px-2 py-1 text-xs"
+                    >
+                      <option value="draft">DRAFT</option>
+                      <option value="sent">SENT</option>
+                      <option value="accepted">ACCEPTED</option>
+                      <option value="rejected">REJECTED</option>
+                      <option value="expired">EXPIRED</option>
+                    </select>
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
-                      <button className="text-blue-600 hover:text-blue-800" title="View">
+                      <button type="button" onClick={() => setSelectedQuotation(quot)} className="text-blue-600 hover:text-blue-800" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button className="text-gray-600 hover:text-gray-800" title="Print">
+                      <button type="button" onClick={() => window.print()} className="text-gray-600 hover:text-gray-800" title="Print">
                         <Printer className="w-5 h-5" />
                       </button>
                       {quot.status === 'sent' && (
-                        <button 
+                        <button
                           onClick={() => convertToOrder(quot.id)}
-                          className="text-green-600 hover:text-green-800" 
+                          className="text-green-600 hover:text-green-800"
                           title="Convert to Order"
                         >
                           <CheckCircle className="w-5 h-5" />
@@ -311,7 +391,7 @@ export default function AdminSalesQuotationsPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4">
             <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
               <h2 className="text-xl font-bold">Create Sales Quotation</h2>
-              <button onClick={() => setShowForm(false)} className="text-white hover:text-gray-200">
+              <button type="button" onClick={() => setShowForm(false)} className="text-white hover:text-gray-200">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -556,17 +636,17 @@ export default function AdminSalesQuotationsPage() {
                       {formData.gst_type === 'cgst_sgst' ? (
                         <>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">CGST (9%):</span>
+                            <span className="text-gray-600">CGST ({(totals.effectiveTaxRate / 2).toFixed(2)}%):</span>
                             <span className="font-medium">₹{totals.cgst.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">SGST (9%):</span>
+                            <span className="text-gray-600">SGST ({(totals.effectiveTaxRate / 2).toFixed(2)}%):</span>
                             <span className="font-medium">₹{totals.sgst.toFixed(2)}</span>
                           </div>
                         </>
                       ) : (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">IGST (18%):</span>
+                          <span className="text-gray-600">IGST ({totals.effectiveTaxRate.toFixed(2)}%):</span>
                           <span className="font-medium">₹{totals.igst.toFixed(2)}</span>
                         </div>
                       )}
@@ -633,6 +713,7 @@ export default function AdminSalesQuotationsPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Quick Add Customer</h2>
                 <button
+                  type="button"
                   onClick={() => setShowCustomerForm(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -647,7 +728,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.name}
-                      onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -658,7 +739,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.customer_code}
-                      onChange={(e) => setNewCustomer({...newCustomer, customer_code: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, customer_code: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -669,7 +750,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.contact_person}
-                      onChange={(e) => setNewCustomer({...newCustomer, contact_person: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, contact_person: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -679,18 +760,19 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="email"
                       value={newCustomer.email}
-                      onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <label className="block text-sm font-medium mb-1">Phone *</label>
                     <input
                       type="tel"
                       value={newCustomer.phone}
-                      onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
+                      required
                     />
                   </div>
 
@@ -698,8 +780,8 @@ export default function AdminSalesQuotationsPage() {
                     <label className="block text-sm font-medium mb-1">GSTIN</label>
                     <input
                       type="text"
-                      value={newCustomer.gstin}
-                      onChange={(e) => setNewCustomer({...newCustomer, gstin: e.target.value})}
+                      value={newCustomer.gst_number}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, gst_number: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       placeholder="e.g., 27AAAAA0000A1Z5"
                     />
@@ -709,8 +791,8 @@ export default function AdminSalesQuotationsPage() {
                     <label className="block text-sm font-medium mb-1">Address</label>
                     <input
                       type="text"
-                      value={newCustomer.address}
-                      onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                      value={newCustomer.address_line1}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, address_line1: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -720,7 +802,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.city}
-                      onChange={(e) => setNewCustomer({...newCustomer, city: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -730,7 +812,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.state}
-                      onChange={(e) => setNewCustomer({...newCustomer, state: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -740,7 +822,7 @@ export default function AdminSalesQuotationsPage() {
                     <input
                       type="text"
                       value={newCustomer.pincode}
-                      onChange={(e) => setNewCustomer({...newCustomer, pincode: e.target.value})}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, pincode: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -763,6 +845,25 @@ export default function AdminSalesQuotationsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedQuotation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Quotation Details</h3>
+              <button type="button" onClick={() => setSelectedQuotation(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-4 space-y-2 text-sm">
+              <p><span className="font-medium">Quotation #:</span> {selectedQuotation.quotation_number}</p>
+              <p><span className="font-medium">Customer:</span> {selectedQuotation.customer?.name || '-'}</p>
+              <p><span className="font-medium">Date:</span> {new Date(selectedQuotation.quotation_date).toLocaleDateString()}</p>
+              <p><span className="font-medium">Valid Until:</span> {selectedQuotation.valid_until ? new Date(selectedQuotation.valid_until).toLocaleDateString() : '-'}</p>
+              <p><span className="font-medium">Status:</span> {selectedQuotation.status}</p>
+              <p><span className="font-medium">Total:</span> ₹{parseFloat(selectedQuotation.total || 0).toFixed(2)}</p>
             </div>
           </div>
         </div>

@@ -17,23 +17,28 @@ export default function AdminProductsPage() {
     name: '', description: '', price: '', discount_percentage: '0', stock: '',
     category_id: '', brand: '', sku: '', unit: 'piece', is_featured: false, is_active: true
   });
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showUnitModal, setShowUnitModal] = useState(false);
+  const [newCategory, setNewCategory] = useState({ name: '', slug: '', description: '' });
+  const [newUnit, setNewUnit] = useState('');
+  const [availableUnits, setAvailableUnits] = useState(['piece', 'kg', 'meter', 'liter', 'box', 'set']);
 
   const fetchProducts = () => {
     setLoading(true);
     productsAPI.list({ page, page_size: 10, search })
-      .then(res => { 
-        setProducts(res.data.products || []); 
-        setTotal(res.data.total || 0); 
+      .then(res => {
+        setProducts(res.data.products || []);
+        setTotal(res.data.total || 0);
       })
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchProducts(); }, [page, search]);
-  useEffect(() => { 
+  useEffect(() => {
     categoriesAPI.listAll()
       .then(r => setCategories(r.data || []))
-      .catch(() => toast.error('Failed to load categories')); 
+      .catch(() => toast.error('Failed to load categories'));
   }, []);
 
   const openCreate = () => {
@@ -55,7 +60,23 @@ export default function AdminProductsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock), discount_percentage: parseFloat(form.discount_percentage) };
+      const price = parseFloat(form.price) || 0;
+      const stock = parseInt(form.stock) || 0;
+      const discount = parseFloat(form.discount_percentage) || 0;
+
+      const slug = form.name.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+
+      const data = {
+        ...form,
+        sku: form.sku.toUpperCase(),
+        price,
+        stock,
+        discount_percentage: discount,
+        slug: editing ? undefined : slug // Only send slug on create
+      };
+
       if (editing) {
         await productsAPI.update(editing.id, data);
         toast.success('Product updated');
@@ -65,13 +86,58 @@ export default function AdminProductsPage() {
       }
       setShowForm(false);
       fetchProducts();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
+    } catch (err) {
+      console.error('Product Save Error:', err);
+      const errorDetail = err.response?.data?.detail;
+      if (Array.isArray(errorDetail)) {
+        const msg = errorDetail.map(d => `${d.loc.join('.')}: ${d.msg}`).join(', ');
+        toast.error(`Validation Error: ${msg}`);
+      } else {
+        toast.error(errorDetail || 'Error saving product');
+      }
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this product?')) return;
     try { await productsAPI.delete(id); toast.success('Deleted'); fetchProducts(); }
     catch { toast.error('Failed to delete'); }
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategory.name) {
+      toast.error('Category name is required');
+      return;
+    }
+    try {
+      const slug = newCategory.slug || newCategory.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const res = await categoriesAPI.create({ ...newCategory, slug, is_active: true });
+      toast.success('Category created');
+      setCategories([...categories, res.data]);
+      setForm({ ...form, category_id: res.data.id });
+      setShowCategoryModal(false);
+      setNewCategory({ name: '', slug: '', description: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to create category');
+    }
+  };
+
+  const handleCreateUnit = (e) => {
+    e.preventDefault();
+    if (!newUnit.trim()) {
+      toast.error('Unit name is required');
+      return;
+    }
+    const unitValue = newUnit.trim().toLowerCase();
+    // Add to available units if not already present
+    if (!availableUnits.includes(unitValue)) {
+      setAvailableUnits([...availableUnits, unitValue]);
+    }
+    setForm({ ...form, unit: unitValue });
+    setShowUnitModal(false);
+    setNewUnit('');
+    toast.success(`Unit "${unitValue}" added`);
   };
 
   const handleImageUpload = async (productId, file) => {
@@ -81,8 +147,8 @@ export default function AdminProductsPage() {
       toast.success('Image uploaded to server');
       // For now, just notify - backend needs to support adding images to products
       fetchProducts();
-    } catch (err) { 
-      toast.error(err.response?.data?.detail || 'Upload failed'); 
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Upload failed');
     }
   };
 
@@ -155,9 +221,8 @@ export default function AdminProductsPage() {
       {total > 10 && (
         <div className="flex justify-center gap-2 mt-4">
           {Array.from({ length: Math.ceil(total / 10) }, (_, i) => (
-            <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              page === i + 1 ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}>{i + 1}</button>
+            <button key={i} onClick={() => setPage(i + 1)} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${page === i + 1 ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}>{i + 1}</button>
           ))}
         </div>
       )}
@@ -169,36 +234,52 @@ export default function AdminProductsPage() {
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Product' : 'Add Product'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Name *</label><input className="input-field" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-                <div><label className="block text-sm font-medium mb-1">SKU</label><input className="input-field" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium mb-1">Category *</label>
-                  <select className="input-field" value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})} required>
-                    <option value="">Select</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                <div><label className="block text-sm font-medium mb-1">Name *</label><input className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+                <div><label className="block text-sm font-medium mb-1">SKU</label><input className="input-field" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} /></div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Category *</label>
+                  <div className="flex gap-2">
+                    <select className="input-field flex-1" value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })} required>
+                      <option value="">Select</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setShowCategoryModal(true)} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm whitespace-nowrap flex items-center gap-1">
+                      <Plus className="w-4 h-4" /> New
+                    </button>
+                  </div>
                 </div>
-                <div><label className="block text-sm font-medium mb-1">Brand</label><input className="input-field" value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium mb-1">Price (₹) *</label><input type="number" step="0.01" className="input-field" value={form.price} onChange={e => setForm({...form, price: e.target.value})} required /></div>
-                <div><label className="block text-sm font-medium mb-1">Discount %</label><input type="number" min="0" max="90" className="input-field" value={form.discount_percentage} onChange={e => setForm({...form, discount_percentage: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium mb-1">Stock *</label><input type="number" className="input-field" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} required /></div>
-                <div><label className="block text-sm font-medium mb-1">Unit</label>
-                  <select className="input-field" value={form.unit} onChange={e => setForm({...form, unit: e.target.value})}>
-                    <option value="piece">Piece</option><option value="kg">Kg</option><option value="meter">Meter</option><option value="liter">Liter</option><option value="box">Box</option><option value="set">Set</option>
-                  </select>
+                <div><label className="block text-sm font-medium mb-1">Brand</label><input className="input-field" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} /></div>
+                <div><label className="block text-sm font-medium mb-1">Price (₹) *</label><input type="number" step="0.01" className="input-field" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required /></div>
+                <div><label className="block text-sm font-medium mb-1">Discount %</label><input type="number" min="0" max="90" className="input-field" value={form.discount_percentage} onChange={e => setForm({ ...form, discount_percentage: e.target.value })} /></div>
+                <div><label className="block text-sm font-medium mb-1">Stock *</label><input type="number" className="input-field" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} required /></div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Unit</label>
+                  <div className="flex gap-2">
+                    <select className="input-field flex-1" value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}>
+                      {availableUnits.map(unit => (
+                        <option key={unit} value={unit}>
+                          {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => setShowUnitModal(true)} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm whitespace-nowrap flex items-center gap-1">
+                      <Plus className="w-4 h-4" /> New
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div><label className="block text-sm font-medium mb-1">Description</label><textarea rows={3} className="input-field" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1">Description</label><textarea rows={3} className="input-field" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
               <div>
                 <label className="block text-sm font-medium mb-1">Product Image</label>
                 <div className="flex items-center gap-3">
-                  <input type="text" className="input-field flex-1" placeholder="Or enter image URL..." value={form.image_url || ''} onChange={e => setForm({...form, image_url: e.target.value})} />
+                  <input type="text" className="input-field flex-1" placeholder="Or enter image URL..." value={form.image_url || ''} onChange={e => setForm({ ...form, image_url: e.target.value })} />
                   <label className="btn-secondary cursor-pointer flex items-center gap-2">
                     <Upload className="w-4 h-4" /> Upload
                     <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                       if (e.target.files[0]) {
                         try {
                           const res = await uploadAPI.upload(e.target.files[0]);
-                          setForm({...form, image_url: res.data.url});
+                          setForm({ ...form, image_url: res.data.url });
                           toast.success('Image uploaded');
                         } catch { toast.error('Upload failed'); }
                       }
@@ -208,12 +289,84 @@ export default function AdminProductsPage() {
                 {form.image_url && <img src={form.image_url} className="w-32 h-32 object-cover rounded mt-2 border" alt="Preview" />}
               </div>
               <div className="flex items-center gap-6">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({...form, is_featured: e.target.checked})} /> Featured</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} /> Active</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /> Featured</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label>
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
                 <button type="submit" className="btn-primary">{editing ? 'Update' : 'Create'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Category Creation Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold mb-4">Add New Category</h3>
+            <form onSubmit={handleCreateCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Category Name *</label>
+                <input
+                  className="input-field"
+                  value={newCategory.name}
+                  onChange={e => setNewCategory({ ...newCategory, name: e.target.value })}
+                  placeholder="e.g., Building Materials"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Slug (optional)</label>
+                <input
+                  className="input-field"
+                  value={newCategory.slug}
+                  onChange={e => setNewCategory({ ...newCategory, slug: e.target.value })}
+                  placeholder="Auto-generated from name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                  className="input-field"
+                  rows={2}
+                  value={newCategory.description}
+                  onChange={e => setNewCategory({ ...newCategory, description: e.target.value })}
+                  placeholder="Optional description"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => { setShowCategoryModal(false); setNewCategory({ name: '', slug: '', description: '' }); }} className="btn-secondary">Cancel</button>
+                <button type="submit" className="btn-primary">Create Category</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Unit Creation Modal */}
+      {showUnitModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold mb-4">Add New Unit</h3>
+            <form onSubmit={handleCreateUnit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Unit Name *</label>
+                <input
+                  className="input-field"
+                  value={newUnit}
+                  onChange={e => setNewUnit(e.target.value)}
+                  placeholder="e.g., dozen, bundle, packet"
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">Hint: Use lowercase, singular form (e.g., "bag", "roll", "strip")</p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => { setShowUnitModal(false); setNewUnit(''); }} className="btn-secondary">Cancel</button>
+                <button type="submit" className="btn-primary">Add Unit</button>
               </div>
             </form>
           </div>

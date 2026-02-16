@@ -16,6 +16,9 @@ def create_b2b_customer(
     current_user = Depends(get_current_user)
 ):
     """Create a new B2B customer"""
+    # Normalize code
+    customer.customer_code = customer.customer_code.upper()
+    
     # Check if customer code already exists
     existing = db.query(B2BCustomer).filter(B2BCustomer.customer_code == customer.customer_code).first()
     if existing:

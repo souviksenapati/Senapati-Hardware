@@ -24,15 +24,17 @@ def create_payment(
     # Create payment
     db_payment = Payment(
         **payment.model_dump(),
-        created_by=current_user.get("id")
+        created_by=current_user.id
     )
     db.add(db_payment)
+    
+    from decimal import Decimal as D
     
     # Update invoice status and balance
     if payment.payment_type == "purchase" and payment.purchase_invoice_id:
         invoice = db.query(PurchaseInvoice).filter(PurchaseInvoice.id == payment.purchase_invoice_id).first()
         if invoice:
-            invoice.paid_amount += payment.amount
+            invoice.paid_amount += D(str(payment.amount))
             invoice.balance_due = invoice.total - invoice.paid_amount
             
             if invoice.balance_due <= 0:
@@ -44,12 +46,12 @@ def create_payment(
             if payment.supplier_id:
                 supplier = db.query(Supplier).filter(Supplier.id == payment.supplier_id).first()
                 if supplier:
-                    supplier.current_balance -= payment.amount
+                    supplier.current_balance -= D(str(payment.amount))
     
     elif payment.payment_type == "sales" and payment.sales_invoice_id:
         invoice = db.query(SalesInvoice).filter(SalesInvoice.id == payment.sales_invoice_id).first()
         if invoice:
-            invoice.paid_amount += payment.amount
+            invoice.paid_amount += D(str(payment.amount))
             invoice.balance_due = invoice.total - invoice.paid_amount
             
             if invoice.balance_due <= 0:
@@ -61,7 +63,7 @@ def create_payment(
             if payment.customer_id:
                 customer = db.query(B2BCustomer).filter(B2BCustomer.id == payment.customer_id).first()
                 if customer:
-                    customer.current_balance -= payment.amount
+                    customer.current_balance -= D(str(payment.amount))
     
     db.commit()
     db.refresh(db_payment)

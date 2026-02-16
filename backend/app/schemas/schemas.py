@@ -84,6 +84,7 @@ class CategoryResponse(BaseModel):
     is_active: bool
     sort_order: int
     created_at: datetime
+    product_count: Optional[int] = 0
     class Config:
         from_attributes = True
 
@@ -102,6 +103,7 @@ class ProductCreate(BaseModel):
     name: str
     slug: str
     sku: str
+    hsn_code: str = ""
     description: str = ""
     short_description: str = ""
     price: float
@@ -120,6 +122,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
+    hsn_code: Optional[str] = None
     description: Optional[str] = None
     short_description: Optional[str] = None
     price: Optional[float] = None
@@ -140,6 +143,7 @@ class ProductResponse(BaseModel):
     name: str
     slug: str
     sku: str
+    hsn_code: str = ""
     description: str
     short_description: str
     price: float
@@ -667,6 +671,7 @@ class PurchaseOrderItemResponse(BaseModel):
     tax_percentage: float
     line_total: float
     notes: str
+    product: Optional[ProductResponse] = None
     class Config:
         from_attributes = True
 
@@ -736,6 +741,7 @@ class GRNItemResponse(BaseModel):
     batch_number: str
     expiry_date: Optional[date]
     notes: str
+    product: Optional[ProductResponse] = None
     class Config:
         from_attributes = True
 
@@ -870,6 +876,7 @@ class SalesQuotationItemResponse(BaseModel):
     tax_percentage: float
     line_total: float
     notes: str
+    product: Optional[ProductResponse] = None
     class Config:
         from_attributes = True
 
@@ -932,6 +939,7 @@ class SalesOrderItemResponse(BaseModel):
     tax_percentage: float
     line_total: float
     notes: str
+    product: Optional[ProductResponse] = None
     class Config:
         from_attributes = True
 
@@ -999,6 +1007,7 @@ class SalesInvoiceItemResponse(BaseModel):
     sgst_amount: float
     igst_amount: float
     line_total: float
+    product: Optional[ProductResponse] = None
     class Config:
         from_attributes = True
 
@@ -1016,6 +1025,18 @@ class SalesInvoiceCreate(BaseModel):
     gst_type: str = "cgst_sgst"
     notes: str = ""
     terms_conditions: str = ""
+    
+    eway_bill_no: str = ""
+    delivery_note_no: str = ""
+    buyer_order_no: str = ""
+    consignee_name: str = ""
+    consignee_address: str = ""
+    consignee_state: str = ""
+    consignee_gstin: str = ""
+    irn: str = ""
+    ack_no: str = ""
+    ack_date: Optional[date] = None
+    
     items: List[SalesInvoiceItemCreate]
 
 class SalesInvoiceUpdate(BaseModel):
@@ -1048,6 +1069,18 @@ class SalesInvoiceResponse(BaseModel):
     paid_amount: float
     balance_due: float
     qr_code_data: str
+    
+    eway_bill_no: str
+    delivery_note_no: str
+    buyer_order_no: str
+    consignee_name: str
+    consignee_address: str
+    consignee_state: str
+    consignee_gstin: str
+    irn: str
+    ack_no: str
+    ack_date: Optional[date]
+    
     notes: str
     terms_conditions: str
     created_at: datetime

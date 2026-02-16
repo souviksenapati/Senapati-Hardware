@@ -208,6 +208,7 @@ class Product(Base):
     brand = Column(String(200), default="")
     stock = Column(Integer, default=0)
     low_stock_threshold = Column(Integer, default=5)
+    hsn_code = Column(String(20), default="")
     weight = Column(Float, nullable=True)
     unit = Column(String(50), default="piece")
     is_active = Column(Boolean, default=True)
@@ -326,8 +327,9 @@ class Coupon(Base):
     usage_limit = Column(Integer, nullable=True)
     used_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
-    valid_from = Column(DateTime, nullable=False)
-    valid_until = Column(DateTime, nullable=False)
+    # Store timezone-aware datetimes to match comparison with datetime.now(timezone.utc) in validation
+    valid_from = Column(DateTime(timezone=True), nullable=False)
+    valid_until = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -799,6 +801,19 @@ class SalesInvoice(Base):
     total = Column(Numeric(12, 2), nullable=False)
     paid_amount = Column(Numeric(12, 2), default=0)
     balance_due = Column(Numeric(12, 2), default=0)
+    
+    # Template specific fields
+    eway_bill_no = Column(String(50), default="")
+    delivery_note_no = Column(String(50), default="")
+    buyer_order_no = Column(String(50), default="")
+    consignee_name = Column(String(300), default="")
+    consignee_address = Column(String(500), default="")
+    consignee_state = Column(String(100), default="")
+    consignee_gstin = Column(String(15), default="")
+    irn = Column(String(500), default="")
+    ack_no = Column(String(100), default="")
+    ack_date = Column(Date, nullable=True)
+    
     qr_code_data = Column(String(500), default="")  # For UPI payment QR
     notes = Column(Text, default="")
     terms_conditions = Column(Text, default="")

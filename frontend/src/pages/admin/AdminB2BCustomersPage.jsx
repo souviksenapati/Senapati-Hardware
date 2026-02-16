@@ -5,7 +5,7 @@ import api from '../../api';
 
 export default function AdminB2BCustomersPage() {
   const [customers, setCustomers] = useState([]);
- const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -39,7 +39,7 @@ export default function AdminB2BCustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await api.get('/b2b-customers/', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -55,20 +55,27 @@ export default function AdminB2BCustomersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = sessionStorage.getItem('token');
+
+      const data = {
+        ...formData,
+        customer_code: formData.customer_code.toUpperCase(),
+        gst_number: (formData.gst_number || '').toUpperCase(),
+        pan_number: (formData.pan_number || '').toUpperCase()
+      };
+
       if (editingCustomer) {
-        await api.put(`/b2b-customers/${editingCustomer.id}`, formData, {
+        await api.put(`/b2b-customers/${editingCustomer.id}`, data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Customer updated successfully');
       } else {
-        await api.post('/b2b-customers/', formData, {
+        await api.post('/b2b-customers/', data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Customer created successfully');
       }
-      
+
       setShowModal(false);
       resetForm();
       fetchCustomers();
@@ -79,9 +86,9 @@ export default function AdminB2BCustomersPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this customer?')) return;
-    
+
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await api.delete(`/b2b-customers/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -228,20 +235,18 @@ export default function AdminB2BCustomersPage() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                      customer.customer_type === 'wholesale' ? 'bg-blue-100 text-blue-800' :
+                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${customer.customer_type === 'wholesale' ? 'bg-blue-100 text-blue-800' :
                       customer.customer_type === 'retail' ? 'bg-green-100 text-green-800' :
-                      'bg-purple-100 text-purple-800'
-                    }`}>
+                        'bg-purple-100 text-purple-800'
+                      }`}>
                       {customer.customer_type.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${
-                      customer.price_tier === 'vip' ? 'bg-yellow-100 text-yellow-800' :
+                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${customer.price_tier === 'vip' ? 'bg-yellow-100 text-yellow-800' :
                       customer.price_tier === 'premium' ? 'bg-indigo-100 text-indigo-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                       {customer.price_tier.toUpperCase()}
                     </span>
                   </td>
@@ -287,14 +292,14 @@ export default function AdminB2BCustomersPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Customer Code *</label>
                   <input
                     type="text"
                     required
                     value={formData.customer_code}
-                    onChange={(e) => setFormData({...formData, customer_code: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, customer_code: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -305,7 +310,7 @@ export default function AdminB2BCustomersPage() {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -315,7 +320,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="text"
                     value={formData.contact_person}
-                    onChange={(e) => setFormData({...formData, contact_person: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -326,7 +331,7 @@ export default function AdminB2BCustomersPage() {
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -336,7 +341,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -346,7 +351,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="text"
                     value={formData.gst_number}
-                    onChange={(e) => setFormData({...formData, gst_number: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -355,7 +360,7 @@ export default function AdminB2BCustomersPage() {
                   <label className="block text-sm font-medium mb-1">Customer Type *</label>
                   <select
                     value={formData.customer_type}
-                    onChange={(e) => setFormData({...formData, customer_type: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, customer_type: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="wholesale">Wholesale</option>
@@ -368,7 +373,7 @@ export default function AdminB2BCustomersPage() {
                   <label className="block text-sm font-medium mb-1">Price Tier</label>
                   <select
                     value={formData.price_tier}
-                    onChange={(e) => setFormData({...formData, price_tier: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, price_tier: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="standard">Standard</option>
@@ -381,7 +386,7 @@ export default function AdminB2BCustomersPage() {
                   <label className="block text-sm font-medium mb-1">Payment Terms</label>
                   <select
                     value={formData.payment_terms}
-                    onChange={(e) => setFormData({...formData, payment_terms: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="cash">Cash</option>
@@ -398,7 +403,7 @@ export default function AdminB2BCustomersPage() {
                     type="number"
                     step="0.01"
                     value={formData.credit_limit}
-                    onChange={(e) => setFormData({...formData, credit_limit: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, credit_limit: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -408,7 +413,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="text"
                     value={formData.address_line1}
-                    onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -418,7 +423,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="text"
                     value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -428,7 +433,7 @@ export default function AdminB2BCustomersPage() {
                   <input
                     type="text"
                     value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -438,7 +443,7 @@ export default function AdminB2BCustomersPage() {
                   <textarea
                     rows={3}
                     value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -448,7 +453,7 @@ export default function AdminB2BCustomersPage() {
                     <input
                       type="checkbox"
                       checked={formData.is_active}
-                      onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">Active</span>

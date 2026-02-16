@@ -11,12 +11,26 @@ router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
 @router.get("", response_model=List[CategoryResponse])
 def list_categories(db: Session = Depends(get_db)):
-    return db.query(Category).filter(Category.is_active == True).order_by(Category.sort_order).all()
+    from app.models.models import Product
+    categories = db.query(Category).filter(Category.is_active == True).order_by(Category.sort_order).all()
+    result = []
+    for cat in categories:
+        cat_dict = CategoryResponse.from_orm(cat).model_dump()
+        cat_dict['product_count'] = db.query(Product).filter(Product.category_id == cat.id).count()
+        result.append(cat_dict)
+    return result
 
 
 @router.get("/all", response_model=List[CategoryResponse])
 def list_all_categories(admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return db.query(Category).order_by(Category.sort_order).all()
+    from app.models.models import Product
+    categories = db.query(Category).order_by(Category.sort_order).all()
+    result = []
+    for cat in categories:
+        cat_dict = CategoryResponse.from_orm(cat).model_dump()
+        cat_dict['product_count'] = db.query(Product).filter(Product.category_id == cat.id).count()
+        result.append(cat_dict)
+    return result
 
 
 @router.get("/{slug}", response_model=CategoryResponse)

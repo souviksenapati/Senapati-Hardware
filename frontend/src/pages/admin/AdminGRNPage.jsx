@@ -8,11 +8,13 @@ export default function AdminGRNPage() {
   const [grns, setGrns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedGRN, setSelectedGRN] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
     grn_number: '',
     supplier_id: '',
+    po_id: null,
     warehouse_id: '',
     grn_date: new Date().toISOString().split('T')[0],
     supplier_invoice_number: '',
@@ -24,6 +26,7 @@ export default function AdminGRNPage() {
   });
 
   const [suppliers, setSuppliers] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -44,11 +47,12 @@ export default function AdminGRNPage() {
   });
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [newSupplier, setNewSupplier] = useState({
+    supplier_code: '',
     name: '',
     contact_person: '',
     email: '',
     phone: '',
-    address: '',
+    address_line1: '',
     city: '',
     state: '',
     pincode: ''
@@ -68,6 +72,7 @@ export default function AdminGRNPage() {
   useEffect(() => {
     fetchGRNs();
     fetchSuppliers();
+    fetchPurchaseOrders();
     fetchWarehouses();
     fetchProducts();
     fetchCategories();
@@ -75,7 +80,7 @@ export default function AdminGRNPage() {
 
   const fetchGRNs = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/purchases/grn', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -89,11 +94,12 @@ export default function AdminGRNPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/suppliers/search?limit=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuppliers(res.data.map(s => ({
+        id: s.id,
         value: s.id,
         label: s.name,
         description: s.contact_person ? `Contact: ${s.contact_person}` : undefined
@@ -103,9 +109,47 @@ export default function AdminGRNPage() {
     }
   };
 
+  const fetchPurchaseOrders = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:8000/api/purchases/orders?limit=100', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPurchaseOrders(res.data.map(po => ({
+        id: po.id,
+        value: po.id,
+        label: `${po.po_number} (${po.supplier?.name || 'Unknown'})`,
+        raw: po
+      })));
+    } catch (error) {
+      console.error('Failed to fetch purchase orders');
+    }
+  };
+
+  const handlePOSelect = (poId) => {
+    const selectedPO = purchaseOrders.find(po => po.id === poId)?.raw;
+    if (selectedPO) {
+      setFormData(prev => ({
+        ...prev,
+        po_id: poId,
+        supplier_id: selectedPO.supplier_id,
+        warehouse_id: selectedPO.warehouse_id,
+        items: selectedPO.items.map(item => ({
+          product_id: item.product_id,
+          ordered_quantity: item.quantity,
+          received_quantity: item.quantity, // Default to full receipt
+          unit_price: item.unit_price,
+          batch_number: '',
+          expiry_date: '',
+          notes: ''
+        }))
+      }));
+    }
+  };
+
   const fetchWarehouses = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/warehouses/search?limit=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -121,7 +165,7 @@ export default function AdminGRNPage() {
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -139,7 +183,7 @@ export default function AdminGRNPage() {
 
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/categories/all', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -156,7 +200,7 @@ export default function AdminGRNPage() {
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const slug = newProduct.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const res = await axios.post('http://localhost:8000/api/products', {
         ...newProduct,
@@ -169,18 +213,18 @@ export default function AdminGRNPage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Product created successfully!');
-      
+
       // Refresh products list
       await fetchProducts();
-      
+
       // Auto-select the new product in the current item
       if (currentItemIndex !== null) {
         handleItemChange(currentItemIndex, 'product_id', res.data.id);
         handleItemChange(currentItemIndex, 'unit_price', res.data.price);
       }
-      
+
       // Reset form
       setNewProduct({ name: '', sku: '', price: 0, stock: 0, description: '', brand: '', unit: 'piece', category_id: '' });
       setShowProductForm(false);
@@ -193,8 +237,8 @@ export default function AdminGRNPage() {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      const slug = newCategory.name.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const token = sessionStorage.getItem('token');
+      const slug = newCategory.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const res = await axios.post('http://localhost:8000/api/categories', {
         ...newCategory,
         slug,
@@ -202,12 +246,12 @@ export default function AdminGRNPage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Category created successfully!');
       await fetchCategories();
-      
+
       // Auto-select new category
-      setNewProduct({...newProduct, category_id: res.data.id});
+      setNewProduct({ ...newProduct, category_id: res.data.id });
       setNewCategory({ name: '', description: '' });
       setShowCategoryForm(false);
     } catch (error) {
@@ -218,22 +262,30 @@ export default function AdminGRNPage() {
   const handleCreateSupplier = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post('http://localhost:8000/api/suppliers', newSupplier, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Supplier created successfully!');
       await fetchSuppliers();
-      
+
       // Auto-select new supplier
-      setFormData({...formData, supplier_id: res.data.id});
+      setFormData({ ...formData, supplier_id: res.data.id });
       setNewSupplier({
-        name: '', contact_person: '', email: '', phone: '',
-        address: '', city: '', state: '', pincode: ''
+        supplier_code: '',
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address_line1: '',
+        city: '',
+        state: '',
+        pincode: ''
       });
       setShowSupplierForm(false);
     } catch (error) {
+      console.error('Supplier creation error:', error);
       toast.error(error.response?.data?.detail || 'Failed to create supplier');
     }
   };
@@ -241,19 +293,19 @@ export default function AdminGRNPage() {
   const handleCreateWarehouse = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post('http://localhost:8000/api/warehouses', {
         ...newWarehouse,
         is_active: true
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Warehouse created successfully!');
       await fetchWarehouses();
-      
+
       // Auto-select new warehouse
-      setFormData({...formData, warehouse_id: res.data.id});
+      setFormData({ ...formData, warehouse_id: res.data.id });
       setNewWarehouse({
         code: '', name: '', address_line1: '', address_line2: '',
         city: '', state: '', pincode: '', manager_name: '', phone: ''
@@ -278,7 +330,7 @@ export default function AdminGRNPage() {
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    
+
     if (field === 'product_id') {
       // When product is selected, auto-fill the unit price
       newItems[index][field] = value;
@@ -289,13 +341,13 @@ export default function AdminGRNPage() {
     } else {
       newItems[index][field] = value;
     }
-    
+
     setFormData({ ...formData, items: newItems });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.grn_number || !formData.supplier_id) {
       toast.error('Please fill all required fields');
       return;
@@ -307,8 +359,27 @@ export default function AdminGRNPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:8000/api/purchases/grn', formData, {
+      const token = sessionStorage.getItem('token');
+
+      // Clean up data: remove empty strings for optional fields
+      const cleanedData = {
+        ...formData,
+        grn_number: formData.grn_number.toUpperCase(),
+        warehouse_id: formData.warehouse_id || null,
+        supplier_invoice_number: (formData.supplier_invoice_number || '').toUpperCase(),
+        supplier_invoice_date: formData.supplier_invoice_date || null,
+        vehicle_number: (formData.vehicle_number || '').toUpperCase(),
+        received_by: formData.received_by || '',
+        items: formData.items.map(item => ({
+          ...item,
+          expiry_date: item.expiry_date || null,
+          batch_number: item.batch_number || '',
+          notes: item.notes || ''
+        }))
+      };
+
+      console.log('Submitting GRN:', cleanedData);
+      await axios.post('http://localhost:8000/api/purchases/grn', cleanedData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('GRN created successfully! Inventory updated.');
@@ -316,7 +387,24 @@ export default function AdminGRNPage() {
       resetForm();
       fetchGRNs();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create GRN');
+      console.error('GRN creation error:', error);
+      console.error('Error response:', error.response?.data);
+
+      // Handle validation errors properly
+      if (error.response?.status === 422 && error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (Array.isArray(detail)) {
+          // Pydantic validation errors
+          const errorMsg = detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+          toast.error(`Validation Error: ${errorMsg}`);
+        } else if (typeof detail === 'string') {
+          toast.error(detail);
+        } else {
+          toast.error('Invalid data submitted. Please check all fields.');
+        }
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to create GRN');
+      }
     }
   };
 
@@ -324,6 +412,7 @@ export default function AdminGRNPage() {
     setFormData({
       grn_number: '',
       supplier_id: '',
+      po_id: null,
       warehouse_id: '',
       grn_date: new Date().toISOString().split('T')[0],
       supplier_invoice_number: '',
@@ -335,10 +424,12 @@ export default function AdminGRNPage() {
     });
   };
 
-  const filteredGRNs = grns.filter(grn =>
-    grn.grn_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    grn.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGRNs = grns.filter((grn) => {
+    const query = searchTerm.toLowerCase();
+    const grnNumber = (grn.grn_number || '').toLowerCase();
+    const supplierName = (grn.supplier?.name || '').toLowerCase();
+    return grnNumber.includes(query) || supplierName.includes(query);
+  });
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -395,14 +486,13 @@ export default function AdminGRNPage() {
                     <td className="px-6 py-4 whitespace-nowrap">{new Date(grn.grn_date).toLocaleDateString()}</td>
                     <td className="px-6 py-4">{grn.supplier_invoice_number || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        grn.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs rounded-full ${grn.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {grn.status}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button className="text-blue-600 hover:text-blue-800">
+                      <button type="button" onClick={() => setSelectedGRN(grn)} className="text-blue-600 hover:text-blue-800">
                         <Eye className="w-4 h-4" />
                       </button>
                     </td>
@@ -417,15 +507,33 @@ export default function AdminGRNPage() {
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-6">Create Goods Received Note</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Package className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Import Data</p>
+                  <p className="text-xs text-blue-700">Select an existing purchase order to auto-fill the GRN</p>
+                </div>
+              </div>
+              <div className="w-64">
+                <SearchableDropdown
+                  options={purchaseOrders}
+                  value={formData.po_id}
+                  onChange={handlePOSelect}
+                  placeholder="Select Purchase Order"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">GRN Number *</label>
                 <input
                   type="text"
                   value={formData.grn_number}
-                  onChange={(e) => setFormData({...formData, grn_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, grn_number: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -446,7 +554,7 @@ export default function AdminGRNPage() {
                 <SearchableDropdown
                   options={suppliers}
                   value={formData.supplier_id}
-                  onChange={(value) => setFormData({...formData, supplier_id: value})}
+                  onChange={(value) => setFormData({ ...formData, supplier_id: value })}
                   placeholder="Select supplier"
                 />
               </div>
@@ -466,7 +574,7 @@ export default function AdminGRNPage() {
                 <SearchableDropdown
                   options={warehouses}
                   value={formData.warehouse_id}
-                  onChange={(value) => setFormData({...formData, warehouse_id: value})}
+                  onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
                   placeholder="Select warehouse"
                 />
               </div>
@@ -476,7 +584,7 @@ export default function AdminGRNPage() {
                 <input
                   type="date"
                   value={formData.grn_date}
-                  onChange={(e) => setFormData({...formData, grn_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, grn_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -487,7 +595,7 @@ export default function AdminGRNPage() {
                 <input
                   type="text"
                   value={formData.supplier_invoice_number}
-                  onChange={(e) => setFormData({...formData, supplier_invoice_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, supplier_invoice_number: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
@@ -497,7 +605,7 @@ export default function AdminGRNPage() {
                 <input
                   type="date"
                   value={formData.supplier_invoice_date}
-                  onChange={(e) => setFormData({...formData, supplier_invoice_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, supplier_invoice_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
@@ -507,7 +615,7 @@ export default function AdminGRNPage() {
                 <input
                   type="text"
                   value={formData.vehicle_number}
-                  onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
@@ -517,7 +625,7 @@ export default function AdminGRNPage() {
                 <input
                   type="text"
                   value={formData.received_by}
-                  onChange={(e) => setFormData({...formData, received_by: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, received_by: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
@@ -625,7 +733,7 @@ export default function AdminGRNPage() {
               <label className="block text-sm font-medium mb-1">Notes</label>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg"
                 rows="3"
               />
@@ -674,7 +782,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newProduct.name}
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -685,7 +793,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newProduct.sku}
-                      onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
+                      onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -696,7 +804,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newProduct.brand}
-                      onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
+                      onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -716,7 +824,7 @@ export default function AdminGRNPage() {
                     <SearchableDropdown
                       options={categories}
                       value={newProduct.category_id}
-                      onChange={(value) => setNewProduct({...newProduct, category_id: value})}
+                      onChange={(value) => setNewProduct({ ...newProduct, category_id: value })}
                       placeholder="Select category"
                     />
                   </div>
@@ -725,7 +833,7 @@ export default function AdminGRNPage() {
                     <label className="block text-sm font-medium mb-1">Unit</label>
                     <select
                       value={newProduct.unit}
-                      onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
+                      onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
                       <option value="piece">Piece</option>
@@ -743,7 +851,7 @@ export default function AdminGRNPage() {
                     <input
                       type="number"
                       value={newProduct.price}
-                      onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
                       className="w-full px-3 py-2 border rounded-lg"
                       step="0.01"
                       required
@@ -755,7 +863,7 @@ export default function AdminGRNPage() {
                     <input
                       type="number"
                       value={newProduct.stock}
-                      onChange={(e) => setNewProduct({...newProduct, stock: parseInt(e.target.value) || 0})}
+                      onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -765,7 +873,7 @@ export default function AdminGRNPage() {
                   <label className="block text-sm font-medium mb-1">Description</label>
                   <textarea
                     value={newProduct.description}
-                    onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
                     rows="3"
                   />
@@ -793,6 +901,49 @@ export default function AdminGRNPage() {
         </div>
       )}
 
+      {selectedGRN && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">GRN Details</h3>
+              <button type="button" onClick={() => setSelectedGRN(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-4 space-y-3 text-sm">
+              <p><span className="font-medium">GRN #:</span> {selectedGRN.grn_number}</p>
+              <p><span className="font-medium">Supplier:</span> {selectedGRN.supplier?.name || '-'}</p>
+              <p><span className="font-medium">Date:</span> {new Date(selectedGRN.grn_date).toLocaleDateString()}</p>
+              <p><span className="font-medium">Status:</span> {selectedGRN.status}</p>
+              <p><span className="font-medium">Supplier Invoice:</span> {selectedGRN.supplier_invoice_number || '-'}</p>
+
+              <div className="border rounded overflow-hidden mt-3">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ordered</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {(selectedGRN.items || []).map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-3 py-2">{item.product?.name || item.product_id}</td>
+                        <td className="px-3 py-2">{item.ordered_quantity}</td>
+                        <td className="px-3 py-2">{item.received_quantity}</td>
+                        <td className="px-3 py-2">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2">{item.batch_number || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Add Category Modal */}
       {showCategoryForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
@@ -815,7 +966,7 @@ export default function AdminGRNPage() {
                   <input
                     type="text"
                     value={newCategory.name}
-                    onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
                     required
                   />
@@ -825,7 +976,7 @@ export default function AdminGRNPage() {
                   <label className="block text-sm font-medium mb-1">Description</label>
                   <textarea
                     value={newCategory.description}
-                    onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
+                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
                     rows="3"
                   />
@@ -872,11 +1023,23 @@ export default function AdminGRNPage() {
               <form onSubmit={handleCreateSupplier} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <label className="block text-sm font-medium mb-1">Supplier Code *</label>
+                    <input
+                      type="text"
+                      value={newSupplier.supplier_code}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, supplier_code: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="e.g., SUP001"
+                      required
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium mb-1">Supplier Name *</label>
                     <input
                       type="text"
                       value={newSupplier.name}
-                      onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -887,8 +1050,19 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newSupplier.contact_person}
-                      onChange={(e) => setNewSupplier({...newSupplier, contact_person: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, contact_person: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone *</label>
+                    <input
+                      type="tel"
+                      value={newSupplier.phone}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      required
                     />
                   </div>
 
@@ -897,17 +1071,7 @@ export default function AdminGRNPage() {
                     <input
                       type="email"
                       value={newSupplier.email}
-                      onChange={(e) => setNewSupplier({...newSupplier, email: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={newSupplier.phone}
-                      onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -916,8 +1080,8 @@ export default function AdminGRNPage() {
                     <label className="block text-sm font-medium mb-1">Address</label>
                     <input
                       type="text"
-                      value={newSupplier.address}
-                      onChange={(e) => setNewSupplier({...newSupplier, address: e.target.value})}
+                      value={newSupplier.address_line1}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, address_line1: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -927,7 +1091,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newSupplier.city}
-                      onChange={(e) => setNewSupplier({...newSupplier, city: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, city: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -937,7 +1101,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newSupplier.state}
-                      onChange={(e) => setNewSupplier({...newSupplier, state: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, state: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -947,7 +1111,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newSupplier.pincode}
-                      onChange={(e) => setNewSupplier({...newSupplier, pincode: e.target.value})}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, pincode: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -998,7 +1162,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.code}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, code: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, code: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       placeholder="e.g., WH001"
                       required
@@ -1010,7 +1174,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.name}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, name: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                       required
                     />
@@ -1021,7 +1185,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.address_line1}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, address_line1: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line1: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1031,7 +1195,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.address_line2}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, address_line2: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, address_line2: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1041,7 +1205,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.city}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, city: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, city: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1051,7 +1215,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.state}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, state: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, state: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1061,7 +1225,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.pincode}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, pincode: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, pincode: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1071,7 +1235,7 @@ export default function AdminGRNPage() {
                     <input
                       type="text"
                       value={newWarehouse.manager_name}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, manager_name: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, manager_name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
@@ -1081,7 +1245,7 @@ export default function AdminGRNPage() {
                     <input
                       type="tel"
                       value={newWarehouse.phone}
-                      onChange={(e) => setNewWarehouse({...newWarehouse, phone: e.target.value})}
+                      onChange={(e) => setNewWarehouse({ ...newWarehouse, phone: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>

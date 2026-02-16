@@ -27,8 +27,9 @@ export default function AdminCategoriesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editing) { await categoriesAPI.update(editing.id, form); toast.success('Updated'); }
-      else { await categoriesAPI.create(form); toast.success('Created'); }
+      const payload = { ...form, slug: form.name.toLowerCase().replace(/ /g, '-') };
+      if (editing) { await categoriesAPI.update(editing.id, payload); toast.success('Updated'); }
+      else { await categoriesAPI.create(payload); toast.success('Created'); }
       setShowForm(false); fetchCategories();
     } catch (err) { toast.error(err.response?.data?.detail || 'Error'); }
   };
@@ -70,12 +71,12 @@ export default function AdminCategoriesPage() {
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Category' : 'Add Category'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div><label className="block text-sm font-medium mb-1">Name *</label><input className="input-field" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-              <div><label className="block text-sm font-medium mb-1">Description</label><textarea rows={3} className="input-field" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1">Name *</label><input className="input-field" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+              <div><label className="block text-sm font-medium mb-1">Description</label><textarea rows={3} className="input-field" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
               <div>
                 <label className="block text-sm font-medium mb-1">Category Image</label>
                 <div className="flex items-center gap-3">
-                  <input type="text" className="input-field flex-1" placeholder="Or enter image URL..." value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} />
+                  <input type="text" className="input-field flex-1" placeholder="Or enter image URL..." value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} />
                   <label className="btn-secondary cursor-pointer flex items-center gap-2">
                     <Upload className="w-4 h-4" /> Upload
                     <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
@@ -84,7 +85,7 @@ export default function AdminCategoriesPage() {
                           const formData = new FormData();
                           formData.append('file', e.target.files[0]);
                           const res = await uploadAPI.upload(formData);
-                          setForm({...form, image_url: res.data.url});
+                          setForm({ ...form, image_url: res.data.url });
                           toast.success('Image uploaded');
                         } catch { toast.error('Upload failed'); }
                       }

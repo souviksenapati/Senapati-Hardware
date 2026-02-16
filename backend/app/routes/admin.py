@@ -167,9 +167,11 @@ def update_inventory(
 
 @router.get("/inventory/{product_id}/logs", response_model=List[InventoryLogResponse])
 def get_inventory_logs(product_id: str, admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)):
-    return db.query(InventoryLog).filter(
+    logs = db.query(InventoryLog).options(joinedload(InventoryLog.product)).filter(
         InventoryLog.product_id == product_id
     ).order_by(InventoryLog.created_at.desc()).limit(50).all()
+    
+    return [InventoryLogResponse.from_orm_with_product(log) for log in logs]
 
 
 @router.post("/inventory/transactions", response_model=dict)
@@ -255,14 +257,7 @@ def get_all_inventory_transactions(
     logs = query.order_by(InventoryLog.created_at.desc()).limit(limit).all()
     
     # Return enriched response with product name
-    return [
-        {
-            **InventoryLogResponse.from_orm(log).dict(),
-            "product_name": log.product.name if log.product else "Unknown",
-            "product_sku": log.product.sku if log.product else ""
-        }
-        for log in logs
-    ]
+    return [InventoryLogResponse.from_orm_with_product(log) for log in logs]
 
 
 # ─── STORE SETTINGS ─────────────────────────────────────
@@ -272,15 +267,16 @@ def get_settings(admin=Depends(require_admin), db: Session = Depends(get_db)):
 
 
 @router.put("/settings")
-def update_setting(req: StoreSettingUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    setting = db.query(StoreSetting).filter(StoreSetting.key == req.key).first()
-    if setting:
-        setting.value = req.value
-    else:
-        setting = StoreSetting(key=req.key, value=req.value)
-        db.add(setting)
+def update_settings(reqs: List[StoreSettingUpdate], admin=Depends(require_admin), db: Session = Depends(get_db)):
+    for req in reqs:
+        setting = db.query(StoreSetting).filter(StoreSetting.key == req.key).first()
+        if setting:
+            setting.value = req.value
+        else:
+            setting = StoreSetting(key=req.key, value=req.value)
+            db.add(setting)
     db.commit()
-    return {"message": "Setting updated"}
+    return {"message": "Settings updated"}
 
 
 # ─── REPORTS ────────────────────────────────────────────

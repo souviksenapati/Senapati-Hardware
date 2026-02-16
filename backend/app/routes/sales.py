@@ -67,7 +67,7 @@ def create_sales_quotation(
         total=total,
         notes=quotation.notes,
         terms_conditions=quotation.terms_conditions,
-        created_by=current_user.get("id")
+        created_by=current_user.id
     )
     db.add(db_quotation)
     db.flush()
@@ -213,7 +213,7 @@ def create_sales_order(
         total_tax=total_tax,
         total=total,
         notes=order.notes,
-        created_by=current_user.get("id")
+        created_by=current_user.id
     )
     db.add(db_order)
     db.flush()
@@ -330,6 +330,9 @@ def create_sales_invoice(
     current_user = Depends(get_current_user)
 ):
     """Create a new sales invoice and update inventory"""
+    # Normalize invoice number
+    invoice.invoice_number = invoice.invoice_number.upper()
+    
     # Check if invoice number exists
     existing = db.query(SalesInvoice).filter(SalesInvoice.invoice_number == invoice.invoice_number).first()
     if existing:
@@ -404,8 +407,18 @@ def create_sales_invoice(
         balance_due=balance_due,
         notes=invoice.notes,
         terms_conditions=invoice.terms_conditions,
-        created_by=current_user.get("id"),
-        status="sent"
+        created_by=current_user.id,
+        status="sent",
+        eway_bill_no=invoice.eway_bill_no,
+        delivery_note_no=invoice.delivery_note_no,
+        buyer_order_no=invoice.buyer_order_no,
+        consignee_name=invoice.consignee_name,
+        consignee_address=invoice.consignee_address,
+        consignee_state=invoice.consignee_state,
+        consignee_gstin=invoice.consignee_gstin,
+        irn=invoice.irn,
+        ack_no=invoice.ack_no,
+        ack_date=invoice.ack_date
     )
     db.add(db_invoice)
     db.flush()
@@ -464,7 +477,7 @@ def create_sales_invoice(
             product_id=item.product_id,
             change=-item.quantity,
             reason=f"Sales Invoice: {invoice.invoice_number}",
-            performed_by=current_user.get("email"),
+            performed_by=current_user.email,
             transaction_type="outward",
             invoice_number=invoice.invoice_number,
             customer_name=customer.name if customer else "",
@@ -501,7 +514,7 @@ def get_sales_invoices(
     """Get all sales invoices"""
     query = db.query(SalesInvoice).options(
         joinedload(SalesInvoice.customer),
-        joinedload(SalesInvoice.items)
+        joinedload(SalesInvoice.items).joinedload(SalesInvoiceItem.product)
     )
     
     if status:
@@ -523,7 +536,7 @@ def get_sales_invoice(
     """Get a specific sales invoice"""
     invoice = db.query(SalesInvoice).options(
         joinedload(SalesInvoice.customer),
-        joinedload(SalesInvoice.items)
+        joinedload(SalesInvoice.items).joinedload(SalesInvoiceItem.product)
     ).filter(SalesInvoice.id == invoice_id).first()
     
     if not invoice:

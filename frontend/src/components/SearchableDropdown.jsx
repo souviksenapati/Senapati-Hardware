@@ -39,6 +39,30 @@ export default function SearchableDropdown({
   const dropdownMenuRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  // Synchronize internal selectedOption with value prop
+  useEffect(() => {
+    if (value) {
+      // Look in static options
+      if (staticOptions) {
+        const found = staticOptions.find(opt => opt.value === value || opt.id === value);
+        if (found) {
+          setSelectedOption(found);
+          return;
+        }
+      }
+      // Look in dynamic options
+      if (options) {
+        const found = options.find(opt => opt.value === value || opt.id === value);
+        if (found) {
+          setSelectedOption(found);
+          return;
+        }
+      }
+    } else {
+      setSelectedOption(null);
+    }
+  }, [value, staticOptions, options]);
+
   // Determine if using async or static mode
   const isAsyncMode = !!fetchOptions;
   const isStaticMode = !!staticOptions;
@@ -47,10 +71,10 @@ export default function SearchableDropdown({
   const getFilteredStaticOptions = () => {
     if (!isStaticMode) return [];
     if (!searchQuery) return staticOptions;
-    
+
     const query = searchQuery.toLowerCase();
-    return staticOptions.filter(opt => 
-      opt.label?.toLowerCase().includes(query) || 
+    return staticOptions.filter(opt =>
+      opt.label?.toLowerCase().includes(query) ||
       opt.value?.toLowerCase().includes(query)
     );
   };
@@ -71,7 +95,7 @@ export default function SearchableDropdown({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          dropdownMenuRef.current && !dropdownMenuRef.current.contains(event.target)) {
+        dropdownMenuRef.current && !dropdownMenuRef.current.contains(event.target)) {
         setIsOpen(false);
         setSearchQuery('');
       }
@@ -84,7 +108,7 @@ export default function SearchableDropdown({
   // Fetch options when search query changes (async mode only)
   useEffect(() => {
     if (!isAsyncMode) return; // Skip if using static options
-    
+
     const searchAsync = async () => {
       setLoading(true);
       try {
@@ -111,7 +135,7 @@ export default function SearchableDropdown({
   // Load initial options when dropdown opens (async mode only)
   useEffect(() => {
     if (!isAsyncMode) return; // Skip if using static options
-    
+
     if (isOpen && options.length === 0 && !searchQuery) {
       const loadInitialOptions = async () => {
         setLoading(true);
@@ -131,7 +155,7 @@ export default function SearchableDropdown({
 
   const handleSelect = (option) => {
     setSelectedOption(option);
-    
+
     // Support both new and old APIs
     if (onSelect) {
       onSelect(option); // New API
@@ -139,7 +163,7 @@ export default function SearchableDropdown({
     if (onChange) {
       onChange(option.value); // Old API
     }
-    
+
     setIsOpen(false);
     setSearchQuery('');
   };
@@ -163,10 +187,10 @@ export default function SearchableDropdown({
     if (isOpen) {
       const handleScroll = () => updateDropdownPosition();
       const handleResize = () => updateDropdownPosition();
-      
+
       window.addEventListener('scroll', handleScroll, true);
       window.addEventListener('resize', handleResize);
-      
+
       return () => {
         window.removeEventListener('scroll', handleScroll, true);
         window.removeEventListener('resize', handleResize);
@@ -185,7 +209,7 @@ export default function SearchableDropdown({
         <span className={selectedOption ? 'text-gray-900 text-sm' : 'text-gray-400 text-sm'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        
+
         <div className="flex items-center gap-2">
           {selectedOption && (
             <X
@@ -232,7 +256,7 @@ export default function SearchableDropdown({
             {(() => {
               // Determine which options to display
               const displayOptions = isStaticMode ? getFilteredStaticOptions() : options;
-              
+
               if (loading && isAsyncMode) {
                 return (
                   <div className="px-4 py-6 text-center text-gray-500">
@@ -241,7 +265,7 @@ export default function SearchableDropdown({
                   </div>
                 );
               }
-              
+
               if (displayOptions.length === 0) {
                 return (
                   <div className="px-4 py-6 text-center text-gray-500">
@@ -251,7 +275,7 @@ export default function SearchableDropdown({
                   </div>
                 );
               }
-              
+
               return displayOptions.map((option, index) => (
                 <button
                   key={option.value || option.id || index}

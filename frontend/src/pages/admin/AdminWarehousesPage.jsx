@@ -29,7 +29,7 @@ export default function AdminWarehousesPage() {
   const fetchWarehouses = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const response = await api.get('/warehouses/', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -44,8 +44,8 @@ export default function AdminWarehousesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = sessionStorage.getItem('token');
+
       if (editingWarehouse) {
         await api.put(`/warehouses/${editingWarehouse.id}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
@@ -57,7 +57,7 @@ export default function AdminWarehousesPage() {
         });
         toast.success('Warehouse created successfully');
       }
-      
+
       setShowModal(false);
       resetForm();
       fetchWarehouses();
@@ -68,9 +68,9 @@ export default function AdminWarehousesPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this warehouse?')) return;
-    
+
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await api.delete(`/warehouses/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -170,9 +170,8 @@ export default function AdminWarehousesPage() {
                     <p className="text-sm text-gray-500">Code: {warehouse.code}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 text-xs rounded-full ${
-                  warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`px-3 py-1 text-xs rounded-full ${warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {warehouse.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -243,7 +242,7 @@ export default function AdminWarehousesPage() {
                     type="text"
                     required
                     value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -254,7 +253,7 @@ export default function AdminWarehousesPage() {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -264,7 +263,7 @@ export default function AdminWarehousesPage() {
                   <input
                     type="text"
                     value={formData.manager_name}
-                    onChange={(e) => setFormData({...formData, manager_name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, manager_name: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -274,7 +273,7 @@ export default function AdminWarehousesPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -284,7 +283,7 @@ export default function AdminWarehousesPage() {
                   <input
                     type="text"
                     value={formData.address_line1}
-                    onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -294,7 +293,7 @@ export default function AdminWarehousesPage() {
                   <input
                     type="text"
                     value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -304,7 +303,7 @@ export default function AdminWarehousesPage() {
                   <input
                     type="text"
                     value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -314,7 +313,7 @@ export default function AdminWarehousesPage() {
                     <input
                       type="checkbox"
                       checked={formData.is_active}
-                      onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">Active</span>

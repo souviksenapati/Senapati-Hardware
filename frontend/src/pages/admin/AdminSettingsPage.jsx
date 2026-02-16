@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
-import { adminAPI } from '../../api';
+import { adminAPI, uploadAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
 
@@ -39,6 +39,14 @@ export default function AdminSettingsPage() {
     { key: 'store_email', label: 'Store Email', type: 'email' },
     { key: 'store_phone', label: 'Store Phone', type: 'text' },
     { key: 'store_address', label: 'Store Address', type: 'textarea' },
+    { key: 'company_gstin', label: 'Company GSTIN', type: 'text' },
+    { key: 'company_pan', label: 'Company PAN No.', type: 'text' },
+    { key: 'bank_name', label: 'Bank Name', type: 'text' },
+    { key: 'bank_account_no', label: 'Bank Account No.', type: 'text' },
+    { key: 'bank_ifsc', label: 'Bank IFSC Code', type: 'text' },
+    { key: 'bank_branch', label: 'Bank Branch', type: 'text' },
+    { key: 'store_logo_url', label: 'Store Logo URL', type: 'text' },
+    { key: 'signature_stamp_url', label: 'Signature Stamp URL', type: 'text' },
     { key: 'currency', label: 'Currency Symbol', type: 'text' },
     { key: 'tax_percentage', label: 'Tax Percentage (%)', type: 'number' },
     { key: 'shipping_charge', label: 'Default Shipping Charge (₹)', type: 'number' },
@@ -62,6 +70,28 @@ export default function AdminSettingsPage() {
               <label className="block text-sm font-medium mb-1">{f.label}</label>
               {f.type === 'textarea' ? (
                 <textarea rows={3} className="input-field" value={settings[f.key] || ''} onChange={e => update(f.key, e.target.value)} />
+              ) : f.key.endsWith('_url') ? (
+                <div className="flex gap-2">
+                  <input type="text" className="input-field flex-1" value={settings[f.key] || ''} onChange={e => update(f.key, e.target.value)} placeholder="https://..." />
+                  <input
+                    type="file"
+                    id={`file-${f.key}`}
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      try {
+                        const res = await uploadAPI.upload(file);
+                        update(f.key, res.data.url);
+                        toast.success('Image uploaded');
+                      } catch {
+                        toast.error('Upload failed');
+                      }
+                    }}
+                  />
+                  <label htmlFor={`file-${f.key}`} className="btn-secondary whitespace-nowrap cursor-pointer">Upload</label>
+                  {settings[f.key] && <img src={settings[f.key]} alt="Preview" className="h-10 w-10 object-contain border rounded bg-gray-50" />}
+                </div>
               ) : (
                 <input type={f.type} className="input-field" value={settings[f.key] || ''} onChange={e => update(f.key, e.target.value)} />
               )}

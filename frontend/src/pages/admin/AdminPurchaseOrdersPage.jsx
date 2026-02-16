@@ -21,25 +21,32 @@ export default function AdminPurchaseOrdersPage() {
     discount_percentage: 0,
     freight_charges: 0,
     other_charges: 0,
+    gst_type: 'cgst_sgst',
     notes: '',
     terms_conditions: '',
     items: [{ product_id: '', quantity: 1, unit_price: 0, discount_percentage: 0, tax_percentage: 18, notes: '' }]
   });
 
   const [suppliers, setSuppliers] = useState([]);
+  const [rawSuppliers, setRawSuppliers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [products, setProducts] = useState([]);
+  const [rawProducts, setRawProducts] = useState([]);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', stock: '', category_id: '', unit: 'piece' });
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     fetchPOs();
     fetchSuppliers();
     fetchWarehouses();
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const fetchPOs = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/purchases/purchase-orders', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -53,23 +60,46 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/suppliers/search?limit=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setSuppliers(res.data);
+      setRawSuppliers(res.data);
+      setSuppliers(res.data.map(s => ({
+        id: s.id,
+        value: s.id,
+        label: s.name
+      })));
     } catch (error) {
       console.error('Failed to fetch suppliers');
     }
   };
 
+  const handleSupplierSelect = (supplierId) => {
+    const supplier = rawSuppliers.find(s => s.id === supplierId);
+    if (supplier) {
+      setFormData(prev => ({
+        ...prev,
+        supplier_id: supplierId,
+        terms_conditions: supplier.payment_terms || prev.terms_conditions,
+        notes: supplier.address ? `Shipping to: ${supplier.address}` : prev.notes
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, supplier_id: supplierId }));
+    }
+  };
+
   const fetchWarehouses = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get('http://localhost:8000/api/warehouses/search?limit=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setWarehouses(res.data);
+      setWarehouses(res.data.map(w => ({
+        id: w.id,
+        value: w.id,
+        label: w.name
+      })));
     } catch (error) {
       console.error('Failed to fetch warehouses');
     }
@@ -77,20 +107,40 @@ export default function AdminPurchaseOrdersPage() {
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/products', {
+      const token = sessionStorage.getItem('token');
+      console.log('[PO Page] Fetching products with token:', token ? 'Present' : 'Missing');
+
+      const res = await axios.get('http://localhost:8000/api/products?page_size=100', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProducts(res.data.map(p => ({
-        id: p.id,
-        label: `${p.name} (${p.sku}) - Stock: ${p.stock} - ₹${p.price}`,
-        name: p.name,
-        sku: p.sku,
+
+      console.log('[PO Page] Products API Response:', res.data);
+
+      const productsData = res.data.products || [];
+      console.log('[PO Page] Products count:', productsData.length);
+
+      setProducts((res.data.products || []).map(p => ({
+        value: p.id,
+        label: `${p.name} (${p.sku})`,
+        description: `Stock: ${p.stock} | Price: ₹${parseFloat(p.price).toFixed(2)}`,
         price: parseFloat(p.price),
         stock: p.stock
       })));
+
     } catch (error) {
       console.error('Failed to fetch products');
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:8000/api/categories', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCategories(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch categories');
     }
   };
 
@@ -114,29 +164,111 @@ export default function AdminPurchaseOrdersPage() {
 
   const handleProductSelect = (index, product) => {
     const newItems = [...formData.items];
-    newItems[index].product_id = product.id;
+    newItems[index].product_id = product.value;
     newItems[index].unit_price = product.price;
     setFormData({ ...formData, items: newItems });
   };
 
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+    if (!newProduct.name || !newProduct.price) {
+      toast.error('Product name and price are required');
+      return;
+    }
+    try {
+      const token = sessionStorage.getItem('token');
+      const slug = newProduct.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const productData = {
+        ...newProduct,
+        slug,
+        sku: newProduct.sku.toUpperCase() || `SKU-${Date.now()}`,
+        price: parseFloat(newProduct.price),
+        stock: parseInt(newProduct.stock) || 0,
+        discount_percentage: 0,
+        is_active: true,
+        is_featured: false
+      };
+      const res = await axios.post('http://localhost:8000/api/products', productData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Product created');
+      fetchProducts();
+      setShowProductModal(false);
+      setNewProduct({ name: '', sku: '', price: '', stock: '', category_id: '', unit: 'piece' });
+      // Auto-select the new product in the last item
+      if (formData.items.length > 0) {
+        const lastIndex = formData.items.length - 1;
+        const newItems = [...formData.items];
+        newItems[lastIndex].product_id = res.data.id;
+        newItems[lastIndex].unit_price = res.data.price;
+        setFormData({ ...formData, items: newItems });
+      }
+    } catch (err) {
+      console.error('Product creation error:', err);
+      toast.error(err.response?.data?.detail || 'Failed to create product');
+    }
+  };
+
   const calculateTotals = () => {
     let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+    let lineTaxableTotal = 0;
+
     formData.items.forEach(item => {
-      if (item.product_id && item.quantity > 0 && item.unit_price > 0) {
-        subtotal += item.quantity * item.unit_price;
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      const itemDiscPct = parseFloat(item.discount_percentage) || 0;
+      const itemTaxPct = parseFloat(item.tax_percentage) || 18;
+
+      if (item.product_id && qty > 0) {
+        const lineGross = qty * price;
+        const lineDiscount = lineGross * (itemDiscPct / 100);
+        const lineTaxable = lineGross - lineDiscount;
+        const lineTax = lineTaxable * (itemTaxPct / 100);
+
+        subtotal += lineGross;
+        totalDiscount += lineDiscount;
+        lineTaxableTotal += lineTaxable;
+        totalTax += lineTax;
       }
     });
 
-    const discountAmount = subtotal * (formData.discount_percentage / 100);
-    const taxAmount = (subtotal - discountAmount) * 0.18; // 18% GST
-    const total = subtotal - discountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0) + taxAmount;
+    const globalDiscountAmount = lineTaxableTotal * (parseFloat(formData.discount_percentage) / 100);
+    const freight = parseFloat(formData.freight_charges) || 0;
+    const other = parseFloat(formData.other_charges) || 0;
 
-    return { subtotal, discountAmount, taxAmount, total };
+    // Total Taxable Amount for the whole order
+    const taxableAmount = lineTaxableTotal - globalDiscountAmount + freight + other;
+
+    // Split tax based on GST type
+    let cgst = 0, sgst = 0, igst = 0;
+
+    if (formData.gst_type === 'cgst_sgst') {
+      // Intrastate: Split tax into CGST and SGST (half each)
+      cgst = totalTax / 2;
+      sgst = totalTax / 2;
+    } else {
+      // Interstate: All tax goes to IGST
+      igst = totalTax;
+    }
+
+    const total = taxableAmount + totalTax;
+
+    return {
+      subtotal,
+      discountAmount: totalDiscount + globalDiscountAmount,
+      taxAmount: totalTax,
+      cgst,
+      sgst,
+      igst,
+      total
+    };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.po_number || !formData.supplier_id) {
       toast.error('Please fill all required fields');
       return;
@@ -148,15 +280,20 @@ export default function AdminPurchaseOrdersPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = sessionStorage.getItem('token');
+
+      const data = {
+        ...formData,
+        po_number: formData.po_number.toUpperCase()
+      };
+
       if (editingPO) {
-        await axios.put(`http://localhost:8000/api/purchases/purchase-orders/${editingPO.id}`, formData, {
+        await axios.put(`http://localhost:8000/api/purchases/purchase-orders/${editingPO.id}`, data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Purchase order updated successfully');
       } else {
-        await axios.post('http://localhost:8000/api/purchases/purchase-orders', formData, {
+        await axios.post('http://localhost:8000/api/purchases/purchase-orders', data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Purchase order created successfully');
@@ -189,12 +326,12 @@ export default function AdminPurchaseOrdersPage() {
 
   const filteredPOs = pos.filter(po => {
     const matchesSearch = po.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         po.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase());
+      po.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const { subtotal, discountAmount, taxAmount, total } = calculateTotals();
+  const { subtotal, discountAmount, taxAmount, cgst, sgst, igst, total } = calculateTotals();
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -263,12 +400,11 @@ export default function AdminPurchaseOrdersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">{new Date(po.po_date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap">₹{parseFloat(po.total).toLocaleString()}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        po.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      <span className={`px-2 py-1 text-xs rounded-full ${po.status === 'approved' ? 'bg-green-100 text-green-800' :
                         po.status === 'received' ? 'bg-blue-100 text-blue-800' :
-                        po.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                          po.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {po.status}
                       </span>
                     </td>
@@ -290,7 +426,7 @@ export default function AdminPurchaseOrdersPage() {
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-6">{editingPO ? 'Edit' : 'Create'} Purchase Order</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -298,7 +434,7 @@ export default function AdminPurchaseOrdersPage() {
                 <input
                   type="text"
                   value={formData.po_number}
-                  onChange={(e) => setFormData({...formData, po_number: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -309,7 +445,7 @@ export default function AdminPurchaseOrdersPage() {
                 <SearchableDropdown
                   options={suppliers}
                   value={formData.supplier_id}
-                  onChange={(value) => setFormData({...formData, supplier_id: value})}
+                  onChange={handleSupplierSelect}
                   placeholder="Select supplier"
                 />
               </div>
@@ -319,7 +455,7 @@ export default function AdminPurchaseOrdersPage() {
                 <SearchableDropdown
                   options={warehouses}
                   value={formData.warehouse_id}
-                  onChange={(value) => setFormData({...formData, warehouse_id: value})}
+                  onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
                   placeholder="Select warehouse"
                 />
               </div>
@@ -329,7 +465,7 @@ export default function AdminPurchaseOrdersPage() {
                 <input
                   type="date"
                   value={formData.po_date}
-                  onChange={(e) => setFormData({...formData, po_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, po_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
@@ -340,9 +476,37 @@ export default function AdminPurchaseOrdersPage() {
                 <input
                   type="date"
                   value={formData.expected_delivery_date}
-                  onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, expected_delivery_date: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">GST Type *</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="gst_type"
+                      value="cgst_sgst"
+                      checked={formData.gst_type === 'cgst_sgst'}
+                      onChange={(e) => setFormData({ ...formData, gst_type: e.target.value })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Intrastate (CGST + SGST)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="gst_type"
+                      value="igst"
+                      checked={formData.gst_type === 'igst'}
+                      onChange={(e) => setFormData({ ...formData, gst_type: e.target.value })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Interstate (IGST)</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -359,72 +523,120 @@ export default function AdminPurchaseOrdersPage() {
                 </button>
               </div>
 
+              {/* Column Headers */}
+              <div className="grid grid-cols-12 gap-2 mb-2 px-3 py-1 bg-gray-50 rounded text-xs font-bold text-gray-600 uppercase">
+                <div className="col-span-3">Product</div>
+                <div className="col-span-1">Qty</div>
+                <div className="col-span-1">Price</div>
+                <div className="col-span-1.5" style={{ gridColumn: 'span 2' }}>Disc %</div>
+                <div className="col-span-1.5" style={{ gridColumn: 'span 1' }}>Taxable</div>
+                <div className="col-span-1">Tax %</div>
+                <div className="col-span-2">Total</div>
+                <div className="col-span-1"></div>
+              </div>
+
               <div className="space-y-3">
-                {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-start border p-3 rounded">
-                    <div className="col-span-4">
-                      <SearchableDropdown
-                        options={products}
-                        value={item.product_id}
-                        onChange={(value) => {
-                          const product = products.find(p => p.id === value);
-                          if (product) handleProductSelect(index, product);
-                        }}
-                        placeholder="Select product"
-                      />
+                {formData.items.map((item, index) => {
+                  const qty = parseFloat(item.quantity) || 0;
+                  const price = parseFloat(item.unit_price) || 0;
+                  const itemDiscPct = parseFloat(item.discount_percentage) || 0;
+                  const itemTaxPct = parseFloat(item.tax_percentage) || 18;
+
+                  const lineGross = qty * price;
+                  const lineDiscount = lineGross * (itemDiscPct / 100);
+                  const taxable = lineGross - lineDiscount;
+                  const lineTax = taxable * (itemTaxPct / 100);
+                  const lineTotal = taxable + lineTax;
+
+                  return (
+                    <div key={index} className="grid grid-cols-12 gap-2 items-start border p-3 rounded bg-gray-50">
+                      <div className="col-span-3">
+                        <label className="text-xs text-gray-600 flex items-center justify-between mb-1">
+                          <span>Product</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowProductModal(true)}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                            title="Add new product"
+                          >
+                            <Plus className="w-3 h-3" /> New
+                          </button>
+                        </label>
+                        <SearchableDropdown
+                          options={products}
+                          value={item.product_id}
+                          onChange={(value) => {
+                            const product = products.find(p => p.value === value);
+                            if (product) handleProductSelect(index, product);
+                          }}
+                          placeholder="Select product"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-xs text-gray-600 block mb-1">Qty</label>
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border rounded"
+                          min="1"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-xs text-gray-600 block mb-1">Price</label>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={item.unit_price}
+                          onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border rounded"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs text-gray-600 block mb-1">Disc %</label>
+                        <input
+                          type="number"
+                          placeholder="Disc %"
+                          value={item.discount_percentage}
+                          onChange={(e) => handleItemChange(index, 'discount_percentage', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border rounded"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-xs text-gray-600 block mb-1">Taxable</label>
+                        <div className="text-xs font-medium py-2">₹{taxable.toFixed(2)}</div>
+                      </div>
+                      <div className="col-span-1">
+                        <label className="text-xs text-gray-600 block mb-1">Tax %</label>
+                        <input
+                          type="number"
+                          value={item.tax_percentage}
+                          onChange={(e) => handleItemChange(index, 'tax_percentage', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-1 border rounded"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs text-gray-600 block mb-1">Total</label>
+                        <div className="text-xs font-bold py-2">₹{lineTotal.toFixed(2)}</div>
+                      </div>
+                      <div className="col-span-1 flex items-center pt-6">
+                        {formData.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        min="1"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        placeholder="Price"
-                        value={item.unit_price}
-                        onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        placeholder="Disc %"
-                        value={item.discount_percentage}
-                        onChange={(e) => handleItemChange(index, 'discount_percentage', parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <input
-                        type="number"
-                        value={item.tax_percentage}
-                        onChange={(e) => handleItemChange(index, 'tax_percentage', parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border rounded"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-span-1 flex items-center">
-                      {formData.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -435,7 +647,7 @@ export default function AdminPurchaseOrdersPage() {
                   <input
                     type="number"
                     value={formData.discount_percentage}
-                    onChange={(e) => setFormData({...formData, discount_percentage: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, discount_percentage: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -445,7 +657,7 @@ export default function AdminPurchaseOrdersPage() {
                   <input
                     type="number"
                     value={formData.freight_charges}
-                    onChange={(e) => setFormData({...formData, freight_charges: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, freight_charges: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -455,7 +667,7 @@ export default function AdminPurchaseOrdersPage() {
                   <input
                     type="number"
                     value={formData.other_charges}
-                    onChange={(e) => setFormData({...formData, other_charges: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, other_charges: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border rounded-lg"
                     step="0.01"
                   />
@@ -479,10 +691,23 @@ export default function AdminPurchaseOrdersPage() {
                   <span>Other Charges:</span>
                   <span className="font-semibold">₹{parseFloat(formData.other_charges || 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Tax (18%):</span>
-                  <span className="font-semibold">₹{taxAmount.toFixed(2)}</span>
-                </div>
+                {formData.gst_type === 'cgst_sgst' ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span>CGST:</span>
+                      <span className="font-semibold">₹{cgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>SGST:</span>
+                      <span className="font-semibold">₹{sgst.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between">
+                    <span>IGST:</span>
+                    <span className="font-semibold">₹{igst.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t pt-2 text-lg">
                   <span className="font-bold">Total:</span>
                   <span className="font-bold text-blue-600">₹{total.toFixed(2)}</span>
@@ -495,7 +720,7 @@ export default function AdminPurchaseOrdersPage() {
                 <label className="block text-sm font-medium mb-1">Notes</label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   rows="3"
                 />
@@ -504,7 +729,7 @@ export default function AdminPurchaseOrdersPage() {
                 <label className="block text-sm font-medium mb-1">Terms & Conditions</label>
                 <textarea
                   value={formData.terms_conditions}
-                  onChange={(e) => setFormData({...formData, terms_conditions: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, terms_conditions: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg"
                   rows="3"
                 />
@@ -527,6 +752,115 @@ export default function AdminPurchaseOrdersPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Product Creation Modal */}
+      {showProductModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">Quick Add Product</h3>
+            <form onSubmit={handleCreateProduct} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Product Name *</label>
+                  <input
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.name}
+                    onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
+                    placeholder="e.g., Cement Bag"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">SKU</label>
+                  <input
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.sku}
+                    onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.price}
+                    onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Stock</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.stock}
+                    onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Category *</label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.category_id}
+                    onChange={e => setNewProduct({ ...newProduct, category_id: e.target.value })}
+                    required
+                  >
+                    <option value="">Select category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Unit</label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newProduct.unit}
+                    onChange={e => setNewProduct({ ...newProduct, unit: e.target.value })}
+                  >
+                    <option value="piece">Piece</option>
+                    <option value="kg">Kg</option>
+                    <option value="meter">Meter</option>
+                    <option value="liter">Liter</option>
+                    <option value="box">Box</option>
+                    <option value="set">Set</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setNewProduct({ name: '', sku: '', price: '', stock: '', category_id: '', unit: 'piece' });
+                  }}
+                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Create Product
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

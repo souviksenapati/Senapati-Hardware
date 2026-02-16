@@ -16,6 +16,13 @@ def create_supplier(
     current_user = Depends(get_current_user)
 ):
     """Create a new supplier"""
+    # Normalize code
+    supplier.supplier_code = supplier.supplier_code.upper()
+
+    # Validate supplier code length (DB limit is 10)
+    if len(supplier.supplier_code) > 10:
+        raise HTTPException(status_code=400, detail="Supplier code must be 10 characters or less")
+    
     # Check if supplier code already exists
     existing = db.query(Supplier).filter(Supplier.supplier_code == supplier.supplier_code).first()
     if existing:

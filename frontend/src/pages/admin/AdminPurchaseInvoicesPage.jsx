@@ -43,7 +43,7 @@ export default function AdminPurchaseInvoicesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.invoice_number.trim()) {
       alert('Please enter invoice number');
@@ -59,7 +59,11 @@ export default function AdminPurchaseInvoicesPage() {
     }
 
     try {
-      await api.post('/purchases/invoices', formData);
+      const data = {
+        ...formData,
+        invoice_number: formData.invoice_number.toUpperCase()
+      };
+      await api.post('/purchases/invoices', data);
       alert('Purchase invoice created successfully! Supplier balance updated.');
       setShowForm(false);
       resetForm();
@@ -110,29 +114,58 @@ export default function AdminPurchaseInvoicesPage() {
 
   // Calculate totals
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => {
-      return sum + (item.quantity * item.unit_price);
-    }, 0);
+    let subtotal = 0;
+    let totalLineDiscount = 0;
+    let totalTax = 0;
+    let taxableItemsTotal = 0;
 
-    const discountAmount = subtotal * (formData.discount_percentage / 100);
-    const taxableAmount = subtotal - discountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
-    
+    formData.items.forEach(item => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      const itemDiscPct = parseFloat(item.discount_percentage) || 0;
+      const itemTaxPct = parseFloat(item.tax_percentage) || 18;
+
+      const lineGross = qty * price;
+      const lineDiscount = lineGross * (itemDiscPct / 100);
+      const taxable = lineGross - lineDiscount;
+      const lineTax = taxable * (itemTaxPct / 100);
+
+      subtotal += lineGross;
+      totalLineDiscount += lineDiscount;
+      taxableItemsTotal += taxable;
+      totalTax += lineTax;
+    });
+
+    const globalDiscountAmount = taxableItemsTotal * (parseFloat(formData.discount_percentage) || 0) / 100;
+    const taxableAmount = taxableItemsTotal - globalDiscountAmount + parseFloat(formData.freight_charges || 0) + parseFloat(formData.other_charges || 0);
+
+    // In India, GST on freight often follows the principal supply. 
+    // Here we'll distribute the cumulative tax based on the GST type.
     let cgst = 0, sgst = 0, igst = 0;
-    
+
+    // If different items have different rates, we should sum them up.
+    // However, the summary UI shows CGST/SGST blocks. We'll use the aggregated totalTax.
     if (formData.gst_type === 'cgst_sgst') {
-      const gstRate = 18; // Total 18% (9% CGST + 9% SGST)
-      const gstAmount = taxableAmount * (gstRate / 100);
-      cgst = gstAmount / 2;
-      sgst = gstAmount / 2;
+      cgst = totalTax / 2;
+      sgst = totalTax / 2;
     } else {
-      igst = taxableAmount * 0.18;
+      igst = totalTax;
     }
 
-    const totalBeforeRound = taxableAmount + cgst + sgst + igst;
+    const totalBeforeRound = taxableAmount + totalTax;
     const roundOff = Math.round(totalBeforeRound) - totalBeforeRound;
     const total = Math.round(totalBeforeRound);
 
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, roundOff, total };
+    return {
+      subtotal,
+      discountAmount: totalLineDiscount + globalDiscountAmount,
+      taxableAmount,
+      cgst,
+      sgst,
+      igst,
+      roundOff,
+      total
+    };
   };
 
   const totals = calculateTotals();
@@ -149,8 +182,8 @@ export default function AdminPurchaseInvoicesPage() {
 
   const fetchProducts = async (query) => {
     const res = await api.get('/products', { params: { search: query, limit: 20 } });
-    return res.data.products.map(p => ({ 
-      value: p.id, 
+    return res.data.products.map(p => ({
+      value: p.id,
       label: `${p.name} - ${p.sku} (Stock: ${p.stock})`,
       price: p.cost_price || 0
     }));
@@ -231,12 +264,11 @@ export default function AdminPurchaseInvoicesPage() {
                     ₹{inv.balance_due?.toFixed(2)}
                   </td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      inv.status === 'paid' ? 'bg-green-100 text-green-700' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${inv.status === 'paid' ? 'bg-green-100 text-green-700' :
                       inv.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-700' :
-                      inv.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
+                        inv.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'
+                      }`}>
                       {inv.status?.replace('_', ' ').toUpperCase()}
                     </span>
                   </td>
@@ -350,14 +382,14 @@ export default function AdminPurchaseInvoicesPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '30%'}}>Product</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '10%'}}>Qty</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '15%'}}>Unit Price</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '10%'}}>Disc %</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '15%'}}>Taxable</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '8%'}}>Tax %</th>
-                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{width: '12%'}}>Total</th>
-                        <th className="text-center p-3 text-sm font-medium text-gray-700" style={{width: '5%'}}></th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '30%' }}>Product</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '10%' }}>Qty</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '15%' }}>Unit Price</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '10%' }}>Disc %</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '15%' }}>Taxable</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '8%' }}>Tax %</th>
+                        <th className="text-left p-3 text-sm font-medium text-gray-700" style={{ width: '12%' }}>Total</th>
+                        <th className="text-center p-3 text-sm font-medium text-gray-700" style={{ width: '5%' }}></th>
                       </tr>
                     </thead>
                     <tbody>

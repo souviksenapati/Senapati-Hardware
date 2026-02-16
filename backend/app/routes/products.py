@@ -79,6 +79,9 @@ def get_product(slug: str, db: Session = Depends(get_db)):
 
 @router.post("", response_model=ProductResponse)
 def create_product(req: ProductCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    # Normalize SKU
+    req.sku = req.sku.upper()
+    
     if db.query(Product).filter(Product.sku == req.sku).first():
         raise HTTPException(400, "SKU already exists")
     if db.query(Product).filter(Product.slug == req.slug).first():
