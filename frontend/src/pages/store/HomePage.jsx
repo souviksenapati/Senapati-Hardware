@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productsAPI, categoriesAPI, bannersAPI } from '../api';
-import ProductCard from '../components/ProductCard';
+import { productsAPI, categoriesAPI, bannersAPI } from '../../api';
+import ProductCard from '../../components/ProductCard';
 import { Truck, Shield, Clock, CreditCard, ChevronRight, Wrench, Zap, Droplets, Lightbulb } from 'lucide-react';
-import { LoadingSpinner } from '../components/UI';
+import { LoadingSpinner } from '../../components/UI';
 
 const categoryIcons = { 'hand-tools': Wrench, 'power-tools': Zap, 'plumbing': Droplets, 'electrical': Lightbulb };
 

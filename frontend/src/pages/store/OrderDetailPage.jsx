@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ordersAPI } from '../api';
-import { LoadingSpinner, StatusBadge } from '../components/UI';
+import { ordersAPI } from '../../api';
+import { LoadingSpinner, StatusBadge } from '../../components/UI';
 import { Package, MapPin, CreditCard, Truck, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 

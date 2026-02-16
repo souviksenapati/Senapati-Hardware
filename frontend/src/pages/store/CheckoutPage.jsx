@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addressesAPI, ordersAPI, couponsAPI } from '../api';
-import { useCart } from '../context/CartContext';
-import { LoadingSpinner } from '../components/UI';
+import { addressesAPI, ordersAPI, couponsAPI } from '../../api';
+import { useCart } from '../../context/CartContext';
+import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {

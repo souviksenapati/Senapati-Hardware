@@ -17,8 +17,12 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
+
+      const isStorePage = !window.location.pathname.startsWith('/admin');
+      const loginPath = isStorePage ? '/login' : '/admin/login';
+
       if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+        window.location.href = loginPath;
       }
     }
     return Promise.reject(err);

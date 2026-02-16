@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { wishlistAPI } from '../api';
-import { useCart } from '../context/CartContext';
+import { wishlistAPI } from '../../api';
+import { useCart } from '../../context/CartContext';
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
-import { LoadingSpinner, EmptyState } from '../components/UI';
+import { LoadingSpinner, EmptyState } from '../../components/UI';
 import toast from 'react-hot-toast';
 
 export default function WishlistPage() {

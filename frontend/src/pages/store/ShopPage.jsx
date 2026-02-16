@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { productsAPI, categoriesAPI } from '../api';
-import ProductCard from '../components/ProductCard';
-import { LoadingSpinner, PageHeader } from '../components/UI';
+import { productsAPI, categoriesAPI } from '../../api';
+import ProductCard from '../../components/ProductCard';
+import { LoadingSpinner, PageHeader } from '../../components/UI';
 import { SlidersHorizontal, X, Package } from 'lucide-react';
 
 export default function ShopPage() {

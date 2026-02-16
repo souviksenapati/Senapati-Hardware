@@ -31,8 +31,8 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
 
-  const login = async (email, password) => {
-    const res = await authAPI.login({ email, password });
+  const login = async (email, password, portal = null) => {
+    const res = await authAPI.login({ email, password, portal });
     sessionStorage.setItem('token', res.data.access_token);
     sessionStorage.setItem('user', JSON.stringify(res.data.user));
     setUser(res.data.user);

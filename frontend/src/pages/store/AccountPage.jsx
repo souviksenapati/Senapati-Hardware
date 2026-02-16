@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api';
+import { useAuth } from '../../context/AuthContext';
+import { authAPI } from '../../api';
 import toast from 'react-hot-toast';
 
 export default function AccountPage() {

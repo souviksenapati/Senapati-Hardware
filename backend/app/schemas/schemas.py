@@ -14,6 +14,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    portal: str  # 'store' or 'admin'
 
 class TokenResponse(BaseModel):
     access_token: str

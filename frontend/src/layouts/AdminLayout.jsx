@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -58,7 +58,7 @@ export default function AdminLayout() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
-  if (!user || (!isAdmin && !isStaff)) return <Navigate to="/login" replace />;
+  if (!user || (!isAdmin && !isStaff)) return <Navigate to="/admin/login" replace />;
 
   return (
     <div className="flex min-h-screen bg-gray-100">

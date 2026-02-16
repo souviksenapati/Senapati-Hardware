@@ -1,32 +1,32 @@
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import StoreLayout from './layouts/StoreLayout';
+import AdminLayout from './layouts/AdminLayout';
 
 // Store Pages
-import HomePage from './pages/HomePage';
-import ShopPage from './pages/ShopPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import OrderDetailPage from './pages/OrderDetailPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderConfirmationPage from './pages/OrderConfirmationPage';
-import OrdersPage from './pages/OrdersPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import AccountPage from './pages/AccountPage';
-import WishlistPage from './pages/WishlistPage';
+import HomePage from './pages/store/HomePage';
+import ShopPage from './pages/store/ShopPage';
+import ProductDetailPage from './pages/store/ProductDetailPage';
+import OrderDetailPage from './pages/store/OrderDetailPage';
+import CartPage from './pages/store/CartPage';
+import CheckoutPage from './pages/store/CheckoutPage';
+import OrderConfirmationPage from './pages/store/OrderConfirmationPage';
+import OrdersPage from './pages/store/OrdersPage';
+import CustomerLoginPage from './pages/store/CustomerLoginPage';
+import RegisterPage from './pages/store/RegisterPage';
+import AccountPage from './pages/store/AccountPage';
+import WishlistPage from './pages/store/WishlistPage';
 
 // Policy & Info Pages
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import CancellationRefundPage from './pages/CancellationRefundPage';
-import ShippingExchangePage from './pages/ShippingExchangePage';
-import ContactPage from './pages/ContactPage';
-import AboutPage from './pages/AboutPage';
-import FAQPage from './pages/FAQPage';
+import TermsPage from './pages/store/TermsPage';
+import PrivacyPage from './pages/store/PrivacyPage';
+import CancellationRefundPage from './pages/store/CancellationRefundPage';
+import ShippingExchangePage from './pages/store/ShippingExchangePage';
+import ContactPage from './pages/store/ContactPage';
+import AboutPage from './pages/store/AboutPage';
+import FAQPage from './pages/store/FAQPage';
 
 // Admin Pages
-import AdminLayout from './pages/admin/AdminLayout';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
@@ -40,6 +40,7 @@ import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminInwardsOutwardsPage from './pages/admin/AdminInwardsOutwardsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
+
 // Inventory Management Pages
 import AdminSuppliersPage from './pages/admin/AdminSuppliersPage';
 import AdminB2BCustomersPage from './pages/admin/AdminB2BCustomersPage';
@@ -51,20 +52,10 @@ import AdminSalesQuotationsPage from './pages/admin/AdminSalesQuotationsPage';
 import AdminSalesOrdersPage from './pages/admin/AdminSalesOrdersPage';
 import AdminSalesInvoicesPage from './pages/admin/AdminSalesInvoicesPage';
 
-function StoreLayout({ children }) {
-  return (
-    <>
-      <Navbar />
-      <main className="min-h-screen">{children}</main>
-      <Footer />
-    </>
-  );
-}
-
 export default function App() {
   return (
     <Routes>
-      {/* Store Routes */}
+      {/* Storefront Routes (with Navbar/Footer) */}
       <Route path="/" element={<StoreLayout><HomePage /></StoreLayout>} />
       <Route path="/shop" element={<StoreLayout><ShopPage /></StoreLayout>} />
       <Route path="/shop/:category" element={<StoreLayout><ShopPage /></StoreLayout>} />
@@ -74,7 +65,7 @@ export default function App() {
       <Route path="/order-confirmation/:id" element={<StoreLayout><OrderConfirmationPage /></StoreLayout>} />
       <Route path="/orders" element={<StoreLayout><OrdersPage /></StoreLayout>} />
       <Route path="/orders/:id" element={<StoreLayout><OrderDetailPage /></StoreLayout>} />
-      <Route path="/login" element={<StoreLayout><LoginPage /></StoreLayout>} />
+      <Route path="/login" element={<StoreLayout><CustomerLoginPage /></StoreLayout>} />
       <Route path="/register" element={<StoreLayout><RegisterPage /></StoreLayout>} />
       <Route path="/account" element={<StoreLayout><AccountPage /></StoreLayout>} />
       <Route path="/wishlist" element={<StoreLayout><WishlistPage /></StoreLayout>} />
@@ -88,7 +79,10 @@ export default function App() {
       <Route path="/about" element={<StoreLayout><AboutPage /></StoreLayout>} />
       <Route path="/faq" element={<StoreLayout><FAQPage /></StoreLayout>} />
 
-      {/* Admin Routes */}
+      {/* Admin Portal Specific Login (No Store Layout) */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+
+      {/* Admin Portal Routes (with Sidebar) */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<AdminProductsPage />} />

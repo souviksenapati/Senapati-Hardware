@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -13,9 +13,19 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
-      toast.success(`Welcome back, ${user.first_name}!`);
-      navigate(user.role === 'admin' || user.role === 'staff' ? '/admin' : '/');
+      const user = await login(form.email, form.password, 'store');
+
+      // Strict role check: Customers only
+      if (user.role === 'customer') {
+        toast.success(`Welcome back, ${user.first_name}!`);
+        navigate('/');
+      } else {
+        // Staff/Admins shouldn't log in here
+        toast.error('Unauthorized: Please use the staff portal.');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        window.location.reload();
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Login failed');
     } finally { setLoading(false); }
@@ -28,11 +38,11 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
-            <input type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="input-field" placeholder="you@email.com" />
+            <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input-field" placeholder="you@email.com" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Password</label>
-            <input type="password" required value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field" placeholder="••••••••" />
+            <input type="password" required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="input-field" placeholder="••••••••" />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Logging in...' : 'Login'}</button>
         </form>

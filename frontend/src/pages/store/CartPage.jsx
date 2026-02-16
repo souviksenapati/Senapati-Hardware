@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../../context/CartContext';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
-import { LoadingSpinner, EmptyState } from '../components/UI';
+import { LoadingSpinner, EmptyState } from '../../components/UI';
 
 export default function CartPage() {
   const { cart, loading, updateQuantity, removeItem, subtotal } = useCart();

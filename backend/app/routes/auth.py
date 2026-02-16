@@ -44,7 +44,20 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
-    token = create_access_token({"sub": user.id, "role": user.role.value})
+    # Portal Verification
+    if req.portal == 'admin':
+        if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+            raise HTTPException(status_code=403, detail="Staff access only for admin portal")
+    elif req.portal == 'store':
+        if user.role != UserRole.CUSTOMER:
+            raise HTTPException(status_code=403, detail="Please use the staff portal for admin accounts")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid portal specified")
+
+    token = create_access_token(
+        {"sub": user.id, "role": user.role.value},
+        audience=req.portal
+    )
     return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 
 

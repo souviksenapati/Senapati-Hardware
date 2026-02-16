@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { productsAPI, reviewsAPI } from '../api';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import { LoadingSpinner, StatusBadge } from '../components/UI';
+import { productsAPI, reviewsAPI } from '../../api';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { LoadingSpinner, StatusBadge } from '../../components/UI';
 import { ShoppingCart, Heart, Minus, Plus, Star, Check, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
