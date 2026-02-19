@@ -16,16 +16,12 @@ export default function AdminLoginPage() {
         try {
             const user = await login(form.email, form.password, 'admin');
 
-            // Strict role check: Only allow admin or staff
-            if (user.role === 'admin' || user.role === 'staff') {
+            // Accept any non-customer portal role
+            if (user.role !== 'CUSTOMER') {
                 toast.success(`Access Granted: ${user.first_name}`);
                 navigate('/admin');
             } else {
-                // Log them out if they are just a customer trying to enter admin area
-                const { logout } = useAuth(); // Hook usage error avoidance: this is simplified, ideally logic is in context
-                // For now, let's just show error and navigate away
                 toast.error('Unauthorized: Staff access only.');
-                // We actually need to logout because the login call above just set the user in session
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('user');
                 window.location.reload();

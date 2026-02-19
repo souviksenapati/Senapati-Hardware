@@ -15,7 +15,7 @@ from app.schemas.schemas import (
     SalesOrderCreate, SalesOrderUpdate, SalesOrderResponse,
     SalesInvoiceCreate, SalesInvoiceUpdate, SalesInvoiceResponse
 )
-from app.utils.auth import get_current_user
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/sales", tags=["Sales Management"])
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/sales", tags=["Sales Management"])
 def create_sales_quotation(
     quotation: SalesQuotationCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_quotations:manage"))
 ):
     """Create a new sales quotation"""
     # Check if quotation number exists
@@ -111,7 +111,7 @@ def get_sales_quotations(
     status: str = None,
     customer_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_quotations:view"))
 ):
     """Get all sales quotations"""
     query = db.query(SalesQuotation).options(
@@ -133,7 +133,7 @@ def get_sales_quotations(
 def get_sales_quotation(
     quotation_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_quotations:view"))
 ):
     """Get a specific sales quotation"""
     quotation = db.query(SalesQuotation).options(
@@ -151,7 +151,7 @@ def update_sales_quotation(
     quotation_id: str,
     quotation_update: SalesQuotationUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_quotations:manage"))
 ):
     """Update a sales quotation"""
     quotation = db.query(SalesQuotation).filter(SalesQuotation.id == quotation_id).first()
@@ -174,7 +174,7 @@ def update_sales_quotation(
 def create_sales_order(
     order: SalesOrderCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_orders:manage"))
 ):
     """Create a new sales order"""
     # Check if order number exists
@@ -269,7 +269,7 @@ def get_sales_orders(
     status: str = None,
     customer_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_orders:view"))
 ):
     """Get all sales orders"""
     query = db.query(SalesOrder).options(
@@ -291,7 +291,7 @@ def get_sales_orders(
 def get_sales_order(
     order_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_orders:view"))
 ):
     """Get a specific sales order"""
     order = db.query(SalesOrder).options(
@@ -309,7 +309,7 @@ def update_sales_order(
     order_id: str,
     order_update: SalesOrderUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_orders:manage"))
 ):
     """Update a sales order"""
     order = db.query(SalesOrder).filter(SalesOrder.id == order_id).first()
@@ -332,7 +332,7 @@ def update_sales_order(
 def create_sales_invoice(
     invoice: SalesInvoiceCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_invoices:manage"))
 ):
     """Create a new sales invoice and update inventory"""
     # Normalize invoice number
@@ -514,7 +514,7 @@ def get_sales_invoices(
     status: str = None,
     customer_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_invoices:view"))
 ):
     """Get all sales invoices"""
     query = db.query(SalesInvoice).options(
@@ -536,7 +536,7 @@ def get_sales_invoices(
 def get_sales_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_invoices:view"))
 ):
     """Get a specific sales invoice"""
     invoice = db.query(SalesInvoice).options(
@@ -554,7 +554,7 @@ def update_sales_invoice(
     invoice_id: str,
     invoice_update: SalesInvoiceUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("sales_invoices:manage"))
 ):
     """Update a sales invoice"""
     invoice = db.query(SalesInvoice).filter(SalesInvoice.id == invoice_id).first()

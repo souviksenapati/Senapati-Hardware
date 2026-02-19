@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Category
 from app.schemas.schemas import CategoryCreate, CategoryResponse
-from app.utils.auth import require_admin
+from app.utils.auth import require_permission
 from typing import List
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
@@ -22,7 +22,7 @@ def list_categories(db: Session = Depends(get_db)):
 
 
 @router.get("/all", response_model=List[CategoryResponse])
-def list_all_categories(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def list_all_categories(admin=Depends(require_permission("catalog:view")), db: Session = Depends(get_db)):
     from app.models.models import Product
     categories = db.query(Category).order_by(Category.sort_order).all()
     result = []
@@ -42,7 +42,7 @@ def get_category(slug: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=CategoryResponse)
-def create_category(req: CategoryCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def create_category(req: CategoryCreate, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     if db.query(Category).filter(Category.slug == req.slug).first():
         raise HTTPException(400, "Slug already exists")
     cat = Category(**req.model_dump())
@@ -53,7 +53,7 @@ def create_category(req: CategoryCreate, admin=Depends(require_admin), db: Sessi
 
 
 @router.put("/{category_id}", response_model=CategoryResponse)
-def update_category(category_id: str, req: CategoryCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def update_category(category_id: str, req: CategoryCreate, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(404, "Category not found")
@@ -65,7 +65,7 @@ def update_category(category_id: str, req: CategoryCreate, admin=Depends(require
 
 
 @router.delete("/{category_id}")
-def delete_category(category_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def delete_category(category_id: str, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(404, "Category not found")

@@ -4,6 +4,7 @@ Run: python seed.py
 """
 import sys
 import os
+import json
 sys.path.insert(0, os.path.dirname(__file__))
 
 from datetime import datetime, timedelta, timezone
@@ -50,16 +51,66 @@ addr = Address(
 )
 db.add(addr)
 
-# ─── STAFF ───────────────────────────────────────────────
+# ─── ROLE-BASED USERS ────────────────────────────────────
+roles_to_seed = [
+    (UserRole.STORE_MANAGER, "Store", "Manager", "storemanager@senapati.com", "storemanager123", "Management", 45000),
+    (UserRole.SALESPERSON, "Sales", "Person", "salesperson@senapati.com", "salesperson123", "Sales", 20000),
+    (UserRole.PURCHASE_MANAGER, "Purchase", "Manager", "purchasemanager@senapati.com", "purchasemanager123", "Procurement", 40000),
+    (UserRole.STOCK_KEEPER, "Stock", "Keeper", "stockkeeper@senapati.com", "stockkeeper123", "Warehouse", 22000),
+    (UserRole.ACCOUNTANT, "Account", "Ant", "accountant@senapati.com", "accountant123", "Accounts", 35000),
+]
+
+# ─── BASE STAFF USER ─────────────────────────────────────
 staff_user = User(
-    email="staff@senapatihardware.com", password_hash=hash_password("staff123"),
-    first_name="Priya", last_name="Patel", phone="9876543212", role=UserRole.STAFF
+    email="staff@senapatihardware.com",
+    password_hash=hash_password("staff123"),
+    first_name="Priya",
+    last_name="Patel",
+    phone="9876543212",
+    role=UserRole.STAFF,
+    permissions=json.dumps(ROLE_PERMISSIONS.get(UserRole.STAFF, []))
 )
 db.add(staff_user)
 db.flush()
 
-staff = Staff(user_id=staff_user.id, staff_role=StaffRole.WAREHOUSE, department="Warehouse", salary=25000)
-db.add(staff)
+staff_rec = Staff(
+    user_id=staff_user.id,
+    staff_role=StaffRole.SUPPORT,
+    department="General",
+    salary=20000,
+    is_active=True
+)
+db.add(staff_rec)
+
+for role, first, last, email, pwd, dept, salary in roles_to_seed:
+    # Use template permissions from ROLE_PERMISSIONS
+    perms = ROLE_PERMISSIONS.get(role, [])
+    
+    u = User(
+        email=email,
+        password_hash=hash_password(pwd),
+        first_name=first,
+        last_name=last,
+        phone=f"987654{len(email):04}",
+        role=role,
+        permissions=json.dumps(perms) # Seed with default template permissions string
+    )
+    db.add(u)
+    db.flush()
+    
+    # Add to staff table - Map to valid StaffRole enum members
+    s_role = StaffRole.SUPPORT
+    if role == UserRole.STORE_MANAGER: s_role = StaffRole.MANAGER
+    elif role == UserRole.STOCK_KEEPER: s_role = StaffRole.WAREHOUSE
+
+    s = Staff(
+        user_id=u.id,
+        staff_role=s_role, 
+        department=dept,
+        salary=salary,
+        is_active=True
+    )
+    db.add(s)
 
 # ─── CATEGORIES ──────────────────────────────────────────
 categories_data = [

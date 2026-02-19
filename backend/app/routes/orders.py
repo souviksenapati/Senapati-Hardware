@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.models import (
-    Order, OrderItem, Cart, CartItem, Product, Address, Coupon, User,
+    Order, OrderItem, Cart, CartItem, Product, Address, Coupon, User, UserRole,
     OrderStatus, PaymentStatus, PaymentMethod, DiscountType, InventoryLog
 )
 from app.schemas.schemas import (
@@ -158,7 +158,7 @@ def get_order(order_id: str, user: User = Depends(get_current_user), db: Session
     order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(404, "Order not found")
-    if user.role == "customer" and order.user_id != user.id:
+    if user.role == UserRole.CUSTOMER and order.user_id != user.id:
         raise HTTPException(403, "Access denied")
     return OrderResponse.model_validate(order)
 
@@ -189,7 +189,7 @@ def cancel_order(order_id: str, user: User = Depends(get_current_user), db: Sess
     order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(404, "Order not found")
-    if user.role == "customer" and order.user_id != user.id:
+    if user.role == UserRole.CUSTOMER and order.user_id != user.id:
         raise HTTPException(403, "Access denied")
     if order.status not in (OrderStatus.PENDING, OrderStatus.CONFIRMED):
         raise HTTPException(400, "Cannot cancel this order")

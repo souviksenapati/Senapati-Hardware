@@ -16,7 +16,7 @@ export default function LoginPage() {
       const user = await login(form.email, form.password, 'store');
 
       // Strict role check: Customers only
-      if (user.role === 'customer') {
+      if (user.role === 'CUSTOMER') {
         toast.success(`Welcome back, ${user.first_name}!`);
         navigate('/');
       } else {

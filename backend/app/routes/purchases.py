@@ -15,7 +15,7 @@ from app.schemas.schemas import (
     GRNCreate, GRNUpdate, GRNResponse,
     PurchaseInvoiceCreate, PurchaseInvoiceUpdate, PurchaseInvoiceResponse
 )
-from app.utils.auth import get_current_user
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/purchases", tags=["Purchase Management"])
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/purchases", tags=["Purchase Management"])
 def create_purchase_order(
     po: PurchaseOrderCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_orders:manage"))
 ):
     """Create a new purchase order"""
     # Check if PO number already exists
@@ -112,7 +112,7 @@ def get_purchase_orders(
     status: str = None,
     supplier_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_orders:view"))
 ):
     """Get all purchase orders"""
     query = db.query(PurchaseOrder).options(
@@ -134,7 +134,7 @@ def get_purchase_orders(
 def get_purchase_order(
     po_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_orders:view"))
 ):
     """Get a specific purchase order"""
     po = db.query(PurchaseOrder).options(
@@ -152,7 +152,7 @@ def update_purchase_order(
     po_id: str,
     po_update: PurchaseOrderUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_orders:manage"))
 ):
     """Update a purchase order"""
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == po_id).first()
@@ -175,7 +175,7 @@ def update_purchase_order(
 def create_grn(
     grn: GRNCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("grn:manage"))
 ):
     """Create a new GRN and update inventory"""
     # Check if GRN number already exists
@@ -257,7 +257,7 @@ def get_grns(
     limit: int = 100,
     supplier_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("grn:view"))
 ):
     """Get all GRNs"""
     query = db.query(GoodsReceivedNote).options(
@@ -277,7 +277,7 @@ def get_grns(
 def get_grn(
     grn_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("grn:view"))
 ):
     """Get a specific GRN"""
     grn = db.query(GoodsReceivedNote).options(
@@ -298,7 +298,7 @@ def get_grn(
 def create_purchase_invoice(
     invoice: PurchaseInvoiceCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_invoices:manage"))
 ):
     """Create a new purchase invoice"""
     # Check if invoice number already exists
@@ -424,7 +424,7 @@ def get_purchase_invoices(
     status: str = None,
     supplier_id: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_invoices:view"))
 ):
     """Get all purchase invoices"""
     query = db.query(PurchaseInvoice).options(
@@ -446,7 +446,7 @@ def get_purchase_invoices(
 def get_purchase_invoice(
     invoice_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_invoices:view"))
 ):
     """Get a specific purchase invoice"""
     invoice = db.query(PurchaseInvoice).options(
@@ -464,7 +464,7 @@ def update_purchase_invoice(
     invoice_id: str,
     invoice_update: PurchaseInvoiceUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("purchase_invoices:manage"))
 ):
     """Update a purchase invoice"""
     invoice = db.query(PurchaseInvoice).filter(PurchaseInvoice.id == invoice_id).first()

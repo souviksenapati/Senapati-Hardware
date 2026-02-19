@@ -12,9 +12,14 @@ from app.database import Base
 import enum
 
 class UserRole(str, enum.Enum):
-    CUSTOMER = "customer"
-    ADMIN = "admin"
-    STAFF = "staff"
+    CUSTOMER = "CUSTOMER"
+    ADMIN = "ADMIN"
+    STAFF = "STAFF"
+    STORE_MANAGER = "STORE_MANAGER"
+    SALESPERSON = "SALESPERSON"
+    PURCHASE_MANAGER = "PURCHASE_MANAGER"
+    STOCK_KEEPER = "STOCK_KEEPER"
+    ACCOUNTANT = "ACCOUNTANT"
 
 class OrderStatus(str, enum.Enum):
     PENDING = "pending"
@@ -46,6 +51,8 @@ class StaffRole(str, enum.Enum):
     WAREHOUSE = "warehouse"
     DELIVERY = "delivery"
     SUPPORT = "support"
+    SALES = "sales"
+    ACCOUNTS = "accounts"
 
 class PurchaseOrderStatus(str, enum.Enum):
     DRAFT = "draft"
@@ -116,6 +123,136 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 
+# ─── PERMISSIONS & ROLE TEMPLATES ────────────────────────
+# Master list of all 38 granular permissions
+ALL_PERMISSIONS = [
+    # Dashboard
+    {"key": "dashboard:view", "label": "View Dashboard", "module": "Dashboard"},
+    # Catalog
+    {"key": "catalog:view", "label": "View Products & Categories", "module": "Catalog"},
+    {"key": "catalog:manage", "label": "Manage Products & Categories", "module": "Catalog"},
+    # E-commerce
+    {"key": "ecom_orders:view", "label": "View E-commerce Orders", "module": "E-commerce"},
+    {"key": "ecom_orders:manage", "label": "Manage E-commerce Orders", "module": "E-commerce"},
+    {"key": "ecom_customers:view", "label": "View E-commerce Customers", "module": "E-commerce"},
+    {"key": "ecom_customers:manage", "label": "Manage E-commerce Customers", "module": "E-commerce"},
+    # Sales
+    {"key": "sales_quotations:view", "label": "View Sales Quotations", "module": "Sales"},
+    {"key": "sales_quotations:manage", "label": "Manage Sales Quotations", "module": "Sales"},
+    {"key": "sales_orders:view", "label": "View Sales Orders", "module": "Sales"},
+    {"key": "sales_orders:manage", "label": "Manage Sales Orders", "module": "Sales"},
+    {"key": "sales_invoices:view", "label": "View Sales Invoices", "module": "Sales"},
+    {"key": "sales_invoices:manage", "label": "Manage Sales Invoices", "module": "Sales"},
+    {"key": "b2b_customers:view", "label": "View B2B Customers", "module": "Sales"},
+    {"key": "b2b_customers:manage", "label": "Manage B2B Customers", "module": "Sales"},
+    # Purchases
+    {"key": "purchase_orders:view", "label": "View Purchase Orders", "module": "Purchases"},
+    {"key": "purchase_orders:manage", "label": "Manage Purchase Orders", "module": "Purchases"},
+    {"key": "grn:view", "label": "View Goods Receipt Notes", "module": "Purchases"},
+    {"key": "grn:manage", "label": "Manage Goods Receipt Notes", "module": "Purchases"},
+    {"key": "purchase_invoices:view", "label": "View Purchase Invoices", "module": "Purchases"},
+    {"key": "purchase_invoices:manage", "label": "Manage Purchase Invoices", "module": "Purchases"},
+    {"key": "suppliers:view", "label": "View Suppliers", "module": "Purchases"},
+    {"key": "suppliers:manage", "label": "Manage Suppliers", "module": "Purchases"},
+    # Inventory
+    {"key": "stock:view", "label": "View Stock Levels & Logs", "module": "Inventory"},
+    {"key": "stock:manage", "label": "Manage Stock (Adjustments)", "module": "Inventory"},
+    {"key": "warehouses:view", "label": "View Warehouses", "module": "Inventory"},
+    {"key": "warehouses:manage", "label": "Manage Warehouses", "module": "Inventory"},
+    # Marketing
+    {"key": "coupons:view", "label": "View Coupons", "module": "Marketing"},
+    {"key": "coupons:manage", "label": "Manage Coupons", "module": "Marketing"},
+    {"key": "banners:view", "label": "View Banners", "module": "Marketing"},
+    {"key": "banners:manage", "label": "Manage Banners", "module": "Marketing"},
+    {"key": "reviews:view", "label": "View Reviews", "module": "Marketing"},
+    {"key": "reviews:manage", "label": "Moderate Reviews", "module": "Marketing"},
+    # System
+    {"key": "staff:view", "label": "View Staff", "module": "System"},
+    {"key": "staff:manage", "label": "Manage Staff & Permissions", "module": "System"},
+    {"key": "settings:view", "label": "View Settings", "module": "System"},
+    {"key": "settings:manage", "label": "Manage Settings", "module": "System"},
+    # Reports
+    {"key": "reports:view", "label": "View Reports & Analytics", "module": "Reports"},
+]
+
+# Role templates — these are default permission sets that auto-populate when assigning a role.
+# Admins can then customize per-user.
+ROLE_PERMISSIONS = {
+    UserRole.ADMIN: ["*"],  # Wildcard — all permissions
+    UserRole.STORE_MANAGER: [
+        "dashboard:view",
+        "catalog:view", "catalog:manage",
+        "ecom_orders:view", "ecom_orders:manage",
+        "ecom_customers:view", "ecom_customers:manage",
+        "sales_quotations:view", "sales_quotations:manage",
+        "sales_orders:view", "sales_orders:manage",
+        "sales_invoices:view", "sales_invoices:manage",
+        "b2b_customers:view", "b2b_customers:manage",
+        "purchase_orders:view", "purchase_orders:manage",
+        "grn:view", "grn:manage",
+        "purchase_invoices:view", "purchase_invoices:manage",
+        "suppliers:view", "suppliers:manage",
+        "stock:view", "stock:manage",
+        "warehouses:view", "warehouses:manage",
+        "coupons:view", "coupons:manage",
+        "banners:view", "banners:manage",
+        "reviews:view", "reviews:manage",
+        "staff:view",
+        "reports:view",
+    ],
+    UserRole.SALESPERSON: [
+        "dashboard:view",
+        "catalog:view",
+        "sales_quotations:view", "sales_quotations:manage",
+        "sales_orders:view", "sales_orders:manage",
+        "sales_invoices:view", "sales_invoices:manage",
+        "b2b_customers:view", "b2b_customers:manage",
+        "stock:view",
+    ],
+    UserRole.PURCHASE_MANAGER: [
+        "dashboard:view",
+        "purchase_orders:view", "purchase_orders:manage",
+        "grn:view", "grn:manage",
+        "purchase_invoices:view", "purchase_invoices:manage",
+        "suppliers:view", "suppliers:manage",
+        "stock:view",
+        "warehouses:view",
+    ],
+    UserRole.STOCK_KEEPER: [
+        "dashboard:view",
+        "catalog:view",
+        "stock:view", "stock:manage",
+        "warehouses:view", "warehouses:manage",
+        "grn:view", "grn:manage",
+    ],
+    UserRole.ACCOUNTANT: [
+        "dashboard:view",
+        "sales_invoices:view", "sales_invoices:manage",
+        "purchase_invoices:view", "purchase_invoices:manage",
+        "b2b_customers:view",
+        "suppliers:view",
+        "reports:view",
+    ],
+    UserRole.STAFF: [
+        "dashboard:view",
+        "stock:view",
+    ],
+    UserRole.CUSTOMER: [],  # No admin permissions
+}
+
+# ─── PERMISSION HIERARCHY (Configurable) ────────────────
+# Defines which action levels automatically grant other action levels.
+# Key = the action the user HAS, Value = list of actions it IMPLIES.
+# This is extensible — add new levels here without touching the checker logic.
+PERMISSION_HIERARCHY = {
+    "manage": ["view"],          # manage implies view
+    # Future extensibility examples (uncomment when needed):
+    # "delete": ["manage", "view"],  # delete implies manage + view
+    # "approve": ["view"],           # approve implies view
+    # "export": ["view"],            # export implies view
+}
+
+
 # ─── USERS ──────────────────────────────────────────────
 class User(Base):
     __tablename__ = "users"
@@ -127,6 +264,7 @@ class User(Base):
     last_name = Column(String(100), default="")
     phone = Column(String(20), default="")
     role = Column(SAEnum(UserRole), default=UserRole.CUSTOMER, nullable=False)
+    permissions = Column(Text, default="[]")  # JSON array of permission strings
     is_active = Column(Boolean, default=True)
     avatar_url = Column(String(500), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -10,11 +10,11 @@ import {
 } from 'lucide-react';
 
 const links = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', description: 'Overview of business performance and key metrics', end: true },
-  { to: '/admin/products', icon: Package, label: 'Products', description: 'Manage your product catalog, prices, and variants' },
-  { to: '/admin/categories', icon: FolderTree, label: 'Categories', description: 'Organize products for easier storefront navigation' },
-  { to: '/admin/orders', icon: ShoppingCart, label: 'E-commerce Orders', description: 'Manage online retail orders received from customers' },
-  { to: '/admin/customers', icon: Users, label: 'E-commerce Customers', description: 'Manage registered retail customer profiles and history' },
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', description: 'Overview of business performance and key metrics', end: true, requiredPermission: 'dashboard:view' },
+  { to: '/admin/products', icon: Package, label: 'Products', description: 'Manage your product catalog, prices, and variants', requiredPermission: 'catalog:view' },
+  { to: '/admin/categories', icon: FolderTree, label: 'Categories', description: 'Organize products for easier storefront navigation', requiredPermission: 'catalog:view' },
+  { to: '/admin/orders', icon: ShoppingCart, label: 'E-commerce Orders', description: 'Manage online retail orders received from customers', requiredPermission: 'ecom_orders:view' },
+  { to: '/admin/customers', icon: Users, label: 'E-commerce Customers', description: 'Manage registered retail customer profiles and history', requiredPermission: 'ecom_customers:view' },
 
   { divider: true, label: 'BUSINESS OPERATIONS' },
   {
@@ -23,10 +23,10 @@ const links = [
     label: 'Sales Module',
     description: 'Manage the complete sales lifecycle from lead to invoice',
     items: [
-      { to: '/admin/sales-quotations', icon: FileSignature, label: 'Sales Quotations', description: 'Create and track price estimates for B2B prospects' },
-      { to: '/admin/sales-orders', icon: ClipboardList, label: 'Sales Orders', description: 'Manage confirmed B2B orders and stock commitments' },
-      { to: '/admin/sales-invoices', icon: Receipt, label: 'Sales Invoices', description: 'Generate GST-compliant tax invoices and track receivables' },
-      { to: '/admin/b2b-customers', icon: UserCircle, label: 'B2B Customers', description: 'Manage wholesale clients and their credit profiles' },
+      { to: '/admin/sales-quotations', icon: FileSignature, label: 'Sales Quotations', description: 'Create and track price estimates for B2B prospects', requiredPermission: 'sales_quotations:view' },
+      { to: '/admin/sales-orders', icon: ClipboardList, label: 'Sales Orders', description: 'Manage confirmed B2B orders and stock commitments', requiredPermission: 'sales_orders:view' },
+      { to: '/admin/sales-invoices', icon: Receipt, label: 'Sales Invoices', description: 'Generate GST-compliant tax invoices and track receivables', requiredPermission: 'sales_invoices:view' },
+      { to: '/admin/b2b-customers', icon: UserCircle, label: 'B2B Customers', description: 'Manage wholesale clients and their credit profiles', requiredPermission: 'b2b_customers:view' },
     ]
   },
   {
@@ -35,10 +35,10 @@ const links = [
     label: 'Purchase Module',
     description: 'Manage procurement processes and supplier relationships',
     items: [
-      { to: '/admin/purchase-orders', icon: ClipboardList, label: 'Purchase Orders', description: 'Issue official orders to suppliers for stock replenishment' },
-      { to: '/admin/grn', icon: PackageCheck, label: 'Goods Receipt (GRN)', description: 'Record physical delivery of goods and update batch stock' },
-      { to: '/admin/purchase-invoices', icon: Receipt, label: 'Purchase Invoices', description: 'Process supplier bills and reconcile with GRN' },
-      { to: '/admin/suppliers', icon: Building, label: 'Suppliers', description: 'Maintain directory of active vendors and sourcing contacts' },
+      { to: '/admin/purchase-orders', icon: ClipboardList, label: 'Purchase Orders', description: 'Issue official orders to suppliers for stock replenishment', requiredPermission: 'purchase_orders:view' },
+      { to: '/admin/grn', icon: PackageCheck, label: 'Goods Receipt (GRN)', description: 'Record physical delivery of goods and update batch stock', requiredPermission: 'grn:view' },
+      { to: '/admin/purchase-invoices', icon: Receipt, label: 'Purchase Invoices', description: 'Process supplier bills and reconcile with GRN', requiredPermission: 'purchase_invoices:view' },
+      { to: '/admin/suppliers', icon: Building, label: 'Suppliers', description: 'Maintain directory of active vendors and sourcing contacts', requiredPermission: 'suppliers:view' },
     ]
   },
   {
@@ -47,25 +47,24 @@ const links = [
     label: 'Inventory Management',
     description: 'Monitor stock movement, health and location logistics',
     items: [
-      { to: '/admin/inventory', icon: Package, label: 'Stock Levels', description: 'Real-time overview of current inventory availability' },
-      { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage multiple storage locations and distributions' },
-      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Log of all stock movements for audit trails' },
+      { to: '/admin/inventory', icon: Package, label: 'Stock Levels', description: 'Real-time overview of current inventory availability', requiredPermission: 'stock:view' },
+      { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage multiple storage locations and distributions', requiredPermission: 'warehouses:view' },
+      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Log of all stock movements for audit trails', requiredPermission: 'stock:view' },
     ]
   },
 
   { divider: true, label: 'MARKETING & SYSTEM' },
-  { to: '/admin/staff', icon: UserCog, label: 'Staff Management', description: 'Control administrative access and team roles' },
-  { to: '/admin/coupons', icon: Ticket, label: 'Coupons', description: 'Dynamic discount management for promotions' },
-  { to: '/admin/banners', icon: Image, label: 'Store Banners', description: 'Design homepage sliders and promotional areas' },
-  { to: '/admin/reviews', icon: Star, label: 'Customer Reviews', description: 'Monitor and moderate public product feedback' },
+  { to: '/admin/staff', icon: UserCog, label: 'Staff Management', description: 'Control administrative access and team roles', requiredPermission: 'staff:view' },
+  { to: '/admin/coupons', icon: Ticket, label: 'Coupons', description: 'Dynamic discount management for promotions', requiredPermission: 'coupons:view' },
+  { to: '/admin/banners', icon: Image, label: 'Store Banners', description: 'Design homepage sliders and promotional areas', requiredPermission: 'banners:view' },
+  { to: '/admin/reviews', icon: Star, label: 'Customer Reviews', description: 'Monitor and moderate public product feedback', requiredPermission: 'reviews:view' },
 
   { divider: true, label: 'CONFIGURATION' },
-  { to: '/admin/settings', icon: Settings, label: 'System Settings', description: 'Global application configuration and defaults' },
-  { to: '/admin/reports', icon: BarChart3, label: 'Reports & Analytics', description: 'Deep dive into sales trends and business growth' },
+  { to: '/admin/settings', icon: Settings, label: 'System Settings', description: 'Global application configuration and defaults', requiredPermission: 'settings:view' },
 ];
 
 export default function AdminLayout() {
-  const { user, isAdmin, isStaff, logout } = useAuth();
+  const { user, isStaff, hasPermission, logout } = useAuth();
   const location = useLocation();
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
   const [hoveredLink, setHoveredLink] = useState(null);
@@ -78,7 +77,34 @@ export default function AdminLayout() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
-  if (!user || (!isAdmin && !isStaff)) return <Navigate to="/admin/login" replace />;
+  if (!user || !isStaff) return <Navigate to="/admin/login" replace />;
+
+  // Calculate sidebar items to avoid empty dividers
+  const sidebarItems = [];
+  let currentDivider = null;
+
+  links.forEach(link => {
+    if (link.divider) {
+      currentDivider = link;
+    } else {
+      let isVisible = false;
+      if (link.dropdown) {
+        // Dropdown is visible if any of its children are visible
+        isVisible = link.items.some(item => !item.requiredPermission || hasPermission(item.requiredPermission));
+      } else {
+        // Regular link visibility
+        isVisible = !link.requiredPermission || hasPermission(link.requiredPermission);
+      }
+
+      if (isVisible) {
+        if (currentDivider) {
+          sidebarItems.push(currentDivider);
+          currentDivider = null; // Mark as added
+        }
+        sidebarItems.push(link);
+      }
+    }
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -94,7 +120,7 @@ export default function AdminLayout() {
           </div>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto overflow-x-visible">
-          {links.map((link, index) => {
+          {sidebarItems.map((link, index) => {
             if (link.divider) {
               return (
                 <div key={`divider-${index}`} className="px-4 py-3 mt-4 mb-1">
@@ -103,10 +129,18 @@ export default function AdminLayout() {
               );
             }
 
+            // At this point we know the link is visible and not a divider
             // Handle dropdown menu
             if (link.dropdown) {
+              // Filter dropdown items by permission
+              const visibleItems = link.items.filter(item =>
+                !item.requiredPermission || hasPermission(item.requiredPermission)
+              );
+              // Hide entire dropdown if no child items are visible
+              if (visibleItems.length === 0) return null;
+
               const isExpanded = expandedDropdown === link.label;
-              const isAnyChildActive = link.items.some(item => location.pathname === item.to);
+              const isAnyChildActive = visibleItems.some(item => location.pathname === item.to);
 
               return (
                 <div key={`dropdown-${index}`}>
@@ -118,8 +152,8 @@ export default function AdminLayout() {
                       }`}
                   >
                     <div className="flex items-center gap-3">
-                      <link.icon className="w-5 h-5" />
-                      <span>{link.label}</span>
+                      <link.icon className="w-5 h-5 shrink-0" />
+                      <span className="text-left leading-tight">{link.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div
@@ -159,7 +193,7 @@ export default function AdminLayout() {
                   {/* Dropdown items */}
                   {isExpanded && (
                     <div className="bg-gray-800/50">
-                      {link.items.map((item, itemIndex) => (
+                      {visibleItems.map((item, itemIndex) => (
                         <div
                           key={item.to}
                           onMouseEnter={() => setHoveredNavItem(item.to)}
@@ -173,8 +207,8 @@ export default function AdminLayout() {
                             }
                           >
                             <div className="flex items-center gap-3">
-                              <item.icon className="w-4 h-4" />
-                              <span>{item.label}</span>
+                              <item.icon className="w-4 h-4 shrink-0" />
+                              <span className="text-left leading-snug">{item.label}</span>
                             </div>
                             <div
                               className="relative"
@@ -230,8 +264,8 @@ export default function AdminLayout() {
                   }
                 >
                   <div className="flex items-center gap-3">
-                    <link.icon className="w-5 h-5" />
-                    <span>{link.label}</span>
+                    <link.icon className="w-5 h-5 shrink-0" />
+                    <span className="text-left leading-tight">{link.label}</span>
                   </div>
                   <div
                     className="relative"

@@ -4,7 +4,7 @@ from typing import List
 from app.database import get_db
 from app.models.models import Supplier
 from app.schemas.schemas import SupplierCreate, SupplierUpdate, SupplierResponse
-from app.utils.auth import get_current_user
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/suppliers", tags=["Suppliers"])
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/suppliers", tags=["Suppliers"])
 def create_supplier(
     supplier: SupplierCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:manage"))
 ):
     """Create a new supplier"""
     # Normalize code
@@ -46,7 +46,7 @@ def get_suppliers(
     search: str = None,
     is_active: bool = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:view"))
 ):
     """Get all suppliers with optional filtering"""
     query = db.query(Supplier)
@@ -71,7 +71,7 @@ def search_suppliers(
     q: str = "",
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:view"))
 ):
     """Search suppliers for dropdown - returns simplified data"""
     query = db.query(Supplier).filter(Supplier.is_active == True)
@@ -103,7 +103,7 @@ def search_suppliers(
 def get_supplier(
     supplier_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:view"))
 ):
     """Get a specific supplier by ID"""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
@@ -117,7 +117,7 @@ def update_supplier(
     supplier_id: str,
     supplier_update: SupplierUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:manage"))
 ):
     """Update a supplier"""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
@@ -137,7 +137,7 @@ def update_supplier(
 def delete_supplier(
     supplier_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:manage"))
 ):
     """Delete a supplier (soft delete by setting is_active=False)"""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
@@ -153,7 +153,7 @@ def delete_supplier(
 def get_supplier_balance(
     supplier_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("suppliers:view"))
 ):
     """Get supplier's current balance and pending payments"""
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()

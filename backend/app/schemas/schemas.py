@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, field_validator
+from typing import Optional, List, Any
 from datetime import datetime, date
+import json
 
 
 # ─── AUTH ────────────────────────────────────────────────
@@ -36,6 +37,18 @@ class UserResponse(BaseModel):
     role: str
     avatar_url: str
     created_at: datetime
+    permissions: List[str] = []
+
+    @field_validator('permissions', mode='before')
+    @classmethod
+    def parse_permissions(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except:
+                return []
+        return v
+
     class Config:
         from_attributes = True
 
@@ -354,9 +367,20 @@ class StaffCreate(BaseModel):
     first_name: str
     last_name: str = ""
     phone: str = ""
-    staff_role: str
+    role: str = "STAFF"            # UserRole value (e.g. SALESPERSON, STOCK_KEEPER)
+    permissions: List[str] = []     # Custom permission list; empty = use role template
     department: str = ""
     salary: float = 0
+
+class StaffUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    permissions: Optional[List[str]] = None
+    department: Optional[str] = None
+    salary: Optional[float] = None
+    is_active: Optional[bool] = None
 
 class StaffResponse(BaseModel):
     id: str
@@ -367,8 +391,13 @@ class StaffResponse(BaseModel):
     joining_date: datetime
     is_active: bool
     user: UserResponse
+    permissions: List[str] = []
     class Config:
         from_attributes = True
+
+class PermissionTemplateResponse(BaseModel):
+    all_permissions: List[dict]
+    role_templates: dict
 
 
 # ─── STORE SETTINGS ─────────────────────────────────────

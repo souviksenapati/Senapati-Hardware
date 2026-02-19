@@ -4,7 +4,7 @@ from typing import List
 from app.database import get_db
 from app.models.models import Warehouse
 from app.schemas.schemas import WarehouseCreate, WarehouseUpdate, WarehouseResponse
-from app.utils.auth import get_current_user
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/warehouses", tags=["Warehouses"])
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/warehouses", tags=["Warehouses"])
 def create_warehouse(
     warehouse: WarehouseCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:manage"))
 ):
     """Create a new warehouse"""
     # Check if warehouse code already exists
@@ -34,7 +34,7 @@ def get_warehouses(
     limit: int = 100,
     is_active: bool = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:view"))
 ):
     """Get all warehouses"""
     query = db.query(Warehouse)
@@ -52,7 +52,7 @@ def search_warehouses(
     q: str = "",
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:view"))
 ):
     """Search warehouses for dropdown"""
     query = db.query(Warehouse).filter(Warehouse.is_active == True)
@@ -81,7 +81,7 @@ def search_warehouses(
 def get_warehouse(
     warehouse_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:view"))
 ):
     """Get a specific warehouse by ID"""
     warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
@@ -95,7 +95,7 @@ def update_warehouse(
     warehouse_id: str,
     warehouse_update: WarehouseUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:manage"))
 ):
     """Update a warehouse"""
     warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
@@ -114,7 +114,7 @@ def update_warehouse(
 def delete_warehouse(
     warehouse_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("warehouses:manage"))
 ):
     """Delete a warehouse (soft delete)"""
     warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()

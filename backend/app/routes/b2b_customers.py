@@ -4,7 +4,7 @@ from typing import List
 from app.database import get_db
 from app.models.models import B2BCustomer
 from app.schemas.schemas import B2BCustomerCreate, B2BCustomerUpdate, B2BCustomerResponse
-from app.utils.auth import get_current_user
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/b2b-customers", tags=["B2B Customers"])
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/b2b-customers", tags=["B2B Customers"])
 def create_b2b_customer(
     customer: B2BCustomerCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:manage"))
 ):
     """Create a new B2B customer"""
     # Normalize code
@@ -43,7 +43,7 @@ def get_b2b_customers(
     is_active: bool = None,
     customer_type: str = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:view"))
 ):
     """Get all B2B customers with optional filtering"""
     query = db.query(B2BCustomer)
@@ -71,7 +71,7 @@ def search_b2b_customers(
     q: str = "",
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:view"))
 ):
     """Search B2B customers for dropdown - returns simplified data"""
     query = db.query(B2BCustomer).filter(B2BCustomer.is_active == True)
@@ -105,7 +105,7 @@ def search_b2b_customers(
 def get_b2b_customer(
     customer_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:view"))
 ):
     """Get a specific B2B customer by ID"""
     customer = db.query(B2BCustomer).filter(B2BCustomer.id == customer_id).first()
@@ -119,7 +119,7 @@ def update_b2b_customer(
     customer_id: str,
     customer_update: B2BCustomerUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:manage"))
 ):
     """Update a B2B customer"""
     customer = db.query(B2BCustomer).filter(B2BCustomer.id == customer_id).first()
@@ -139,7 +139,7 @@ def update_b2b_customer(
 def delete_b2b_customer(
     customer_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:manage"))
 ):
     """Delete a B2B customer (soft delete by setting is_active=False)"""
     customer = db.query(B2BCustomer).filter(B2BCustomer.id == customer_id).first()
@@ -155,7 +155,7 @@ def delete_b2b_customer(
 def get_customer_balance(
     customer_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(require_permission("b2b_customers:view"))
 ):
     """Get customer's current balance and credit info"""
     customer = db.query(B2BCustomer).filter(B2BCustomer.id == customer_id).first()

@@ -2,16 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
+import json
 from app.database import get_db
 from app.models.models import (
     User, UserRole, Product, Order, OrderItem, OrderStatus,
-    Staff, StaffRole, InventoryLog, StoreSetting, Coupon
+    Staff, StaffRole, InventoryLog, StoreSetting, Coupon,
+    ROLE_PERMISSIONS, ALL_PERMISSIONS
 )
 from app.schemas.schemas import (
-    DashboardStats, OrderResponse, UserResponse, StaffCreate, StaffResponse,
-    StoreSettingResponse, StoreSettingUpdate, InventoryUpdate, InventoryLogResponse, InventoryTransactionCreate
+    DashboardStats, OrderResponse, UserResponse, StaffCreate, StaffUpdate, StaffResponse,
+    StoreSettingResponse, StoreSettingUpdate, InventoryUpdate, InventoryLogResponse,
+    InventoryTransactionCreate, PermissionTemplateResponse
 )
-from app.utils.auth import require_admin, require_staff_or_admin, hash_password
+from app.utils.auth import require_admin, require_staff_or_admin, require_permission, hash_password
 from typing import List
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -19,7 +22,7 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 # ─── DASHBOARD ──────────────────────────────────────────
 @router.get("/dashboard", response_model=DashboardStats)
-def get_dashboard(admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)):
+def get_dashboard(user=Depends(require_permission("dashboard:view")), db: Session = Depends(get_db)):
     total_revenue = db.query(func.sum(Order.total)).filter(Order.status != OrderStatus.CANCELLED).scalar() or 0
     total_orders = db.query(Order).count()
     total_customers = db.query(User).filter(User.role == UserRole.CUSTOMER).count()
@@ -66,7 +69,7 @@ def list_customers(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: str = Query(None),
-    admin=Depends(require_admin),
+    user=Depends(require_permission("ecom_customers:view")),
     db: Session = Depends(get_db)
 ):
     q = db.query(User).filter(User.role == UserRole.CUSTOMER)
@@ -76,7 +79,7 @@ def list_customers(
 
 
 @router.put("/customers/{user_id}/toggle-active")
-def toggle_customer(user_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def toggle_customer(user_id: str, user=Depends(require_permission("ecom_customers:manage")), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -87,14 +90,38 @@ def toggle_customer(user_id: str, admin=Depends(require_admin), db: Session = De
 
 # ─── STAFF MANAGEMENT ───────────────────────────────────
 @router.get("/staff", response_model=List[StaffResponse])
-def list_staff(admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return db.query(Staff).options(joinedload(Staff.user)).all()
+def list_staff(user=Depends(require_permission("staff:view")), db: Session = Depends(get_db)):
+    staff_list = db.query(Staff).options(joinedload(Staff.user)).all()
+    results = []
+    for s in staff_list:
+        resp = StaffResponse.model_validate(s)
+        if s.user.permissions:
+            try:
+                perms = json.loads(s.user.permissions)
+            except:
+                perms = ROLE_PERMISSIONS.get(s.user.role, [])
+        else:
+            perms = ROLE_PERMISSIONS.get(s.user.role, [])
+        resp.permissions = perms
+        results.append(resp)
+    return results
 
 
 @router.post("/staff", response_model=StaffResponse)
-def create_staff(req: StaffCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def create_staff(req: StaffCreate, admin=Depends(require_permission("staff:manage")), db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == req.email).first():
         raise HTTPException(400, "Email already exists")
+
+    # Resolve role
+    try:
+        role = UserRole(req.role)
+    except ValueError:
+        raise HTTPException(400, f"Invalid role: {req.role}")
+    if role == UserRole.CUSTOMER:
+        raise HTTPException(400, "Cannot create staff with customer role")
+
+    # Resolve permissions: use provided list, or fall back to role template
+    perms = req.permissions if req.permissions else ROLE_PERMISSIONS.get(role, [])
 
     user = User(
         email=req.email,
@@ -102,25 +129,115 @@ def create_staff(req: StaffCreate, admin=Depends(require_admin), db: Session = D
         first_name=req.first_name,
         last_name=req.last_name,
         phone=req.phone,
-        role=UserRole.STAFF
+        role=role,
+        permissions=json.dumps(perms)
     )
     db.add(user)
     db.flush()
 
+    # Map UserRole to a valid StaffRole enum member
+    s_role = StaffRole.SUPPORT
+    if role == UserRole.STORE_MANAGER: s_role = StaffRole.MANAGER
+    elif role == UserRole.STOCK_KEEPER: s_role = StaffRole.WAREHOUSE
+    elif role == UserRole.SALESPERSON: s_role = StaffRole.SALES
+    elif role == UserRole.PURCHASE_MANAGER: s_role = StaffRole.MANAGER
+    elif role == UserRole.ACCOUNTANT: s_role = StaffRole.ACCOUNTS
+    elif role == UserRole.ADMIN: s_role = StaffRole.MANAGER
+
     staff = Staff(
         user_id=user.id,
-        staff_role=StaffRole(req.staff_role),
+        staff_role=s_role,
         department=req.department,
         salary=req.salary
     )
     db.add(staff)
     db.commit()
     db.refresh(staff)
-    return StaffResponse.model_validate(staff)
+    resp = StaffResponse.model_validate(staff)
+    resp.permissions = perms
+    return resp
+
+
+@router.put("/staff/{staff_id}", response_model=StaffResponse)
+def update_staff(staff_id: str, req: StaffUpdate, admin=Depends(require_permission("staff:manage")), db: Session = Depends(get_db)):
+    staff = db.query(Staff).options(joinedload(Staff.user)).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(404, "Staff not found")
+
+    user = staff.user
+    # Update user fields
+    if req.first_name is not None:
+        user.first_name = req.first_name
+    if req.last_name is not None:
+        user.last_name = req.last_name
+    if req.phone is not None:
+        user.phone = req.phone
+    if req.is_active is not None:
+        staff.is_active = req.is_active
+        user.is_active = req.is_active
+
+    # Update role if changed
+    if req.role is not None:
+        try:
+            new_role = UserRole(req.role)
+            user.role = new_role
+            
+            # Map for staff table
+            s_role = StaffRole.SUPPORT
+            if new_role == UserRole.STORE_MANAGER: s_role = StaffRole.MANAGER
+            elif new_role == UserRole.STOCK_KEEPER: s_role = StaffRole.WAREHOUSE
+            elif new_role == UserRole.SALESPERSON: s_role = StaffRole.SALES
+            elif new_role == UserRole.PURCHASE_MANAGER: s_role = StaffRole.MANAGER
+            elif new_role == UserRole.ACCOUNTANT: s_role = StaffRole.ACCOUNTS
+            elif new_role == UserRole.ADMIN: s_role = StaffRole.MANAGER
+            staff.staff_role = s_role
+        except ValueError:
+            raise HTTPException(400, f"Invalid role: {req.role}")
+
+    # Update permissions
+    if req.permissions is not None:
+        user.permissions = json.dumps(req.permissions)
+
+    # Update staff fields
+    if req.department is not None:
+        staff.department = req.department
+    if req.salary is not None:
+        staff.salary = req.salary
+
+    db.commit()
+    db.refresh(staff)
+    resp = StaffResponse.model_validate(staff)
+    if user.permissions:
+        try:
+            resp.permissions = json.loads(user.permissions)
+        except:
+            resp.permissions = ROLE_PERMISSIONS.get(user.role, [])
+    else:
+        resp.permissions = ROLE_PERMISSIONS.get(user.role, [])
+    return resp
+
+
+@router.put("/staff/{staff_id}/permissions")
+def update_staff_permissions(
+    staff_id: str,
+    permissions: List[str],
+    admin=Depends(require_permission("staff:manage")),
+    db: Session = Depends(get_db)
+):
+    """Update only the permissions for a staff member."""
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(404, "Staff not found")
+    user = db.query(User).filter(User.id == staff.user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    user.permissions = json.dumps(permissions)
+    db.commit()
+    return {"message": "Permissions updated", "permissions": permissions}
 
 
 @router.delete("/staff/{staff_id}")
-def remove_staff(staff_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def remove_staff(staff_id: str, admin=Depends(require_permission("staff:manage")), db: Session = Depends(get_db)):
     staff = db.query(Staff).filter(Staff.id == staff_id).first()
     if not staff:
         raise HTTPException(404, "Staff not found")
@@ -132,9 +249,22 @@ def remove_staff(staff_id: str, admin=Depends(require_admin), db: Session = Depe
     return {"message": "Staff deactivated"}
 
 
+@router.get("/permissions/templates", response_model=PermissionTemplateResponse)
+def get_permission_templates(user=Depends(require_permission("staff:view"))):
+    """Return all permission definitions and role templates for the staff management UI."""
+    role_templates = {}
+    for role, perms in ROLE_PERMISSIONS.items():
+        if role != UserRole.CUSTOMER:
+            role_templates[role.value] = perms
+    return PermissionTemplateResponse(
+        all_permissions=ALL_PERMISSIONS,
+        role_templates=role_templates
+    )
+
+
 # ─── INVENTORY MANAGEMENT ───────────────────────────────
 @router.get("/inventory/low-stock")
-def low_stock_products(admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)):
+def low_stock_products(user=Depends(require_permission("stock:view")), db: Session = Depends(get_db)):
     products = db.query(Product).filter(
         Product.stock <= 10, Product.is_active == True
     ).all()
@@ -144,7 +274,7 @@ def low_stock_products(admin=Depends(require_staff_or_admin), db: Session = Depe
 @router.put("/inventory/{product_id}")
 def update_inventory(
     product_id: str, req: InventoryUpdate,
-    admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)
+    user=Depends(require_permission("stock:manage")), db: Session = Depends(get_db)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -166,7 +296,7 @@ def update_inventory(
 
 
 @router.get("/inventory/{product_id}/logs", response_model=List[InventoryLogResponse])
-def get_inventory_logs(product_id: str, admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)):
+def get_inventory_logs(product_id: str, user=Depends(require_permission("stock:view")), db: Session = Depends(get_db)):
     logs = db.query(InventoryLog).options(joinedload(InventoryLog.product)).filter(
         InventoryLog.product_id == product_id
     ).order_by(InventoryLog.created_at.desc()).limit(50).all()
@@ -177,7 +307,7 @@ def get_inventory_logs(product_id: str, admin=Depends(require_staff_or_admin), d
 @router.post("/inventory/transactions", response_model=dict)
 def create_inventory_transaction(
     req: InventoryTransactionCreate,
-    admin=Depends(require_staff_or_admin),
+    user=Depends(require_permission("stock:manage")),
     db: Session = Depends(get_db)
 ):
     """Create an inward or outward inventory transaction with invoice details for multiple products"""
@@ -216,7 +346,7 @@ def create_inventory_transaction(
             product_id=product.id,
             change=change,
             reason=f"{req.transaction_type.capitalize()} transaction - {req.invoice_number or 'No invoice'}",
-            performed_by=admin.id,
+            performed_by=user.id,
             transaction_type=req.transaction_type,
             invoice_id=invoice_id,
             invoice_number=req.invoice_number,
@@ -245,7 +375,7 @@ def create_inventory_transaction(
 def get_all_inventory_transactions(
     transaction_type: str = Query(None),
     limit: int = Query(500),
-    admin=Depends(require_staff_or_admin),
+    user=Depends(require_permission("stock:view")),
     db: Session = Depends(get_db)
 ):
     """Get all inventory transactions (inward/outward) across all products with product details"""
@@ -262,12 +392,12 @@ def get_all_inventory_transactions(
 
 # ─── STORE SETTINGS ─────────────────────────────────────
 @router.get("/settings", response_model=List[StoreSettingResponse])
-def get_settings(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def get_settings(user=Depends(require_permission("settings:view")), db: Session = Depends(get_db)):
     return db.query(StoreSetting).all()
 
 
 @router.put("/settings")
-def update_settings(reqs: List[StoreSettingUpdate], admin=Depends(require_admin), db: Session = Depends(get_db)):
+def update_settings(reqs: List[StoreSettingUpdate], user=Depends(require_permission("settings:manage")), db: Session = Depends(get_db)):
     for req in reqs:
         setting = db.query(StoreSetting).filter(StoreSetting.key == req.key).first()
         if setting:
@@ -284,7 +414,7 @@ def update_settings(reqs: List[StoreSettingUpdate], admin=Depends(require_admin)
 def sales_report(
     start_date: str = Query(None),
     end_date: str = Query(None),
-    admin=Depends(require_admin),
+    user=Depends(require_permission("reports:view")),
     db: Session = Depends(get_db)
 ):
     q = db.query(Order).filter(Order.status != OrderStatus.CANCELLED)

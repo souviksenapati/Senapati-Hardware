@@ -7,7 +7,7 @@ from app.models.models import Product, ProductImage, Category
 from app.schemas.schemas import (
     ProductCreate, ProductUpdate, ProductResponse, ProductListResponse
 )
-from app.utils.auth import require_admin
+from app.utils.auth import require_permission
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -78,7 +78,7 @@ def get_product(slug: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=ProductResponse)
-def create_product(req: ProductCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def create_product(req: ProductCreate, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     # Normalize SKU
     req.sku = req.sku.upper()
     
@@ -95,7 +95,7 @@ def create_product(req: ProductCreate, admin=Depends(require_admin), db: Session
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
-def update_product(product_id: str, req: ProductUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def update_product(product_id: str, req: ProductUpdate, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(404, "Product not found")
@@ -108,7 +108,7 @@ def update_product(product_id: str, req: ProductUpdate, admin=Depends(require_ad
 
 
 @router.delete("/{product_id}")
-def delete_product(product_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def delete_product(product_id: str, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(404, "Product not found")
@@ -120,7 +120,7 @@ def delete_product(product_id: str, admin=Depends(require_admin), db: Session = 
 @router.post("/{product_id}/images")
 def add_product_image(
     product_id: str, image_url: str, alt_text: str = "", is_primary: bool = False,
-    admin=Depends(require_admin), db: Session = Depends(get_db)
+    admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -138,7 +138,7 @@ def add_product_image(
 
 
 @router.delete("/{product_id}/images/{image_id}")
-def remove_product_image(product_id: str, image_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def remove_product_image(product_id: str, image_id: str, admin=Depends(require_permission("catalog:manage")), db: Session = Depends(get_db)):
     img = db.query(ProductImage).filter(ProductImage.id == image_id, ProductImage.product_id == product_id).first()
     if not img:
         raise HTTPException(404, "Image not found")

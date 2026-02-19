@@ -46,7 +46,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
     # Portal Verification
     if req.portal == 'admin':
-        if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        if user.role == UserRole.CUSTOMER:
             raise HTTPException(status_code=403, detail="Staff access only for admin portal")
     elif req.portal == 'store':
         if user.role != UserRole.CUSTOMER:
@@ -54,16 +54,45 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=400, detail="Invalid portal specified")
 
+    # Build permissions for response
+    import json
+    from app.models.models import ROLE_PERMISSIONS
+    user_perms = []
+    try:
+        stored = json.loads(user.permissions or "[]")
+        if isinstance(stored, list) and len(stored) > 0:
+            user_perms = stored
+    except (json.JSONDecodeError, TypeError):
+        pass
+    if not user_perms:
+        user_perms = ROLE_PERMISSIONS.get(user.role, [])
+
     token = create_access_token(
         {"sub": user.id, "role": user.role.value},
         audience=req.portal
     )
-    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+    user_resp = UserResponse.model_validate(user)
+    user_resp.permissions = user_perms
+    return TokenResponse(access_token=token, user=user_resp)
 
 
 @router.get("/me", response_model=UserResponse)
 def get_me(user: User = Depends(get_current_user)):
-    return UserResponse.model_validate(user)
+    import json
+    from app.models.models import ROLE_PERMISSIONS
+    user_resp = UserResponse.model_validate(user)
+    # Parse permissions from stored JSON — same logic as login
+    user_perms = []
+    try:
+        stored = json.loads(user.permissions or "[]")
+        if isinstance(stored, list) and len(stored) > 0:
+            user_perms = stored
+    except (json.JSONDecodeError, TypeError):
+        pass
+    if not user_perms:
+        user_perms = ROLE_PERMISSIONS.get(user.role, [])
+    user_resp.permissions = user_perms
+    return user_resp
 
 
 @router.put("/me", response_model=UserResponse)

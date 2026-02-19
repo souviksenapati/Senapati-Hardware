@@ -64,6 +64,57 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 
 def require_staff_or_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role not in (UserRole.ADMIN, UserRole.STAFF):
+    if user.role == UserRole.CUSTOMER:
         raise HTTPException(status_code=403, detail="Staff or admin access required")
     return user
+
+
+def _get_user_permissions(user: User) -> list:
+    """Parse the user's stored permission list. Falls back to role template."""
+    import json
+    from app.models.models import ROLE_PERMISSIONS
+    try:
+        perms = json.loads(user.permissions or "[]")
+        if isinstance(perms, list) and len(perms) > 0:
+            return perms
+    except (json.JSONDecodeError, TypeError):
+        pass
+    # Fallback: use role template (for users created before RBAC migration)
+    return ROLE_PERMISSIONS.get(user.role, [])
+
+
+def require_permission(permission: str):
+    """Factory: returns a FastAPI dependency that checks if the user has the given permission.
+    
+    Rules:
+    - Wildcard '*' grants all permissions (ADMIN).
+    - Uses PERMISSION_HIERARCHY to resolve implied permissions
+      (e.g., having 'stock:manage' passes a 'stock:view' check if manage→view is in hierarchy).
+    - Hierarchy is configurable — add new action levels without modifying this function.
+    """
+    def checker(user: User = Depends(get_current_user)) -> User:
+        from app.models.models import PERMISSION_HIERARCHY
+        user_perms = _get_user_permissions(user)
+        # Wildcard check (ADMIN)
+        if "*" in user_perms:
+            return user
+        # Direct match
+        if permission in user_perms:
+            return user
+        # Hierarchy check: does any permission the user HAS imply the requested one?
+        if ":" in permission:
+            req_module, req_action = permission.rsplit(":", 1)
+            for user_perm in user_perms:
+                if ":" not in user_perm:
+                    continue
+                perm_module, perm_action = user_perm.rsplit(":", 1)
+                if perm_module == req_module:
+                    # Check if the user's action level implies the requested action
+                    implied_actions = PERMISSION_HIERARCHY.get(perm_action, [])
+                    if req_action in implied_actions:
+                        return user
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission '{permission}' required"
+        )
+    return checker
