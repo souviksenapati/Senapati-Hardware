@@ -84,6 +84,7 @@ class SalesQuotationStatus(str, enum.Enum):
 
 class SalesOrderStatus(str, enum.Enum):
     DRAFT = "draft"
+    PENDING = "pending"
     CONFIRMED = "confirmed"
     PARTIALLY_DELIVERED = "partially_delivered"
     DELIVERED = "delivered"
@@ -139,24 +140,35 @@ ALL_PERMISSIONS = [
     # Sales
     {"key": "sales_quotations:view", "label": "View Sales Quotations", "module": "Sales"},
     {"key": "sales_quotations:manage", "label": "Manage Sales Quotations", "module": "Sales"},
+    {"key": "sales_quotations:approve", "label": "Approve Quotations", "module": "Sales"},
+    {"key": "sales_quotations:export", "label": "Export Quotations", "module": "Sales"},
     {"key": "sales_orders:view", "label": "View Sales Orders", "module": "Sales"},
     {"key": "sales_orders:manage", "label": "Manage Sales Orders", "module": "Sales"},
+    {"key": "sales_orders:approve", "label": "Approve Sales Orders", "module": "Sales"},
+    {"key": "sales_orders:export", "label": "Export Sales Orders", "module": "Sales"},
     {"key": "sales_invoices:view", "label": "View Sales Invoices", "module": "Sales"},
     {"key": "sales_invoices:manage", "label": "Manage Sales Invoices", "module": "Sales"},
+    {"key": "sales_invoices:void", "label": "Void Invoices", "module": "Sales"},
+    {"key": "sales_invoices:export", "label": "Export Invoices", "module": "Sales"},
     {"key": "b2b_customers:view", "label": "View B2B Customers", "module": "Sales"},
     {"key": "b2b_customers:manage", "label": "Manage B2B Customers", "module": "Sales"},
     # Purchases
     {"key": "purchase_orders:view", "label": "View Purchase Orders", "module": "Purchases"},
     {"key": "purchase_orders:manage", "label": "Manage Purchase Orders", "module": "Purchases"},
+    {"key": "purchase_orders:approve", "label": "Approve Purchase Orders", "module": "Purchases"},
+    {"key": "purchase_orders:export", "label": "Export Purchase Orders", "module": "Purchases"},
     {"key": "grn:view", "label": "View Goods Receipt Notes", "module": "Purchases"},
     {"key": "grn:manage", "label": "Manage Goods Receipt Notes", "module": "Purchases"},
+    {"key": "grn:export", "label": "Export GRNs", "module": "Purchases"},
     {"key": "purchase_invoices:view", "label": "View Purchase Invoices", "module": "Purchases"},
     {"key": "purchase_invoices:manage", "label": "Manage Purchase Invoices", "module": "Purchases"},
+    {"key": "purchase_invoices:export", "label": "Export Purchase Invoices", "module": "Purchases"},
     {"key": "suppliers:view", "label": "View Suppliers", "module": "Purchases"},
     {"key": "suppliers:manage", "label": "Manage Suppliers", "module": "Purchases"},
     # Inventory
     {"key": "stock:view", "label": "View Stock Levels & Logs", "module": "Inventory"},
     {"key": "stock:manage", "label": "Manage Stock (Adjustments)", "module": "Inventory"},
+    {"key": "stock:audit", "label": "Audit Stock Logs", "module": "Inventory"},
     {"key": "warehouses:view", "label": "View Warehouses", "module": "Inventory"},
     {"key": "warehouses:manage", "label": "Manage Warehouses", "module": "Inventory"},
     # Marketing
@@ -173,7 +185,24 @@ ALL_PERMISSIONS = [
     {"key": "settings:manage", "label": "Manage Settings", "module": "System"},
     # Reports
     {"key": "reports:view", "label": "View Reports & Analytics", "module": "Reports"},
+    {"key": "reports:export", "label": "Export Reports", "module": "Reports"},
+    # Payments
+    {"key": "payments:view", "label": "View Payments", "module": "Payments"},
+    {"key": "payments:manage", "label": "Manage Payments", "module": "Payments"},
+    {"key": "payments:export", "label": "Export Payments", "module": "Payments"},
 ]
+
+# ─── PERMISSION HIERARCHY (Single authoritative definition) ────────────────
+# Defines which action levels automatically imply other action levels.
+# Key = the action the user HAS, Value = list of actions it IMPLIES.
+# Used by both auth.py require_permission() and the frontend hasPermission().
+PERMISSION_HIERARCHY = {
+    "manage": ["view", "export"],   # manage implies view AND export
+    "approve": ["view"],             # approve implies view
+    "void": ["view"],                # void implies view
+    "audit": ["view"],               # audit implies view
+    "export": ["view"],              # export implies view — critical for report-only roles
+}
 
 # Role templates — these are default permission sets that auto-populate when assigning a role.
 # Admins can then customize per-user.
@@ -184,39 +213,42 @@ ROLE_PERMISSIONS = {
         "catalog:view", "catalog:manage",
         "ecom_orders:view", "ecom_orders:manage",
         "ecom_customers:view", "ecom_customers:manage",
-        "sales_quotations:view", "sales_quotations:manage",
-        "sales_orders:view", "sales_orders:manage",
-        "sales_invoices:view", "sales_invoices:manage",
+        "sales_quotations:view", "sales_quotations:manage", "sales_quotations:approve", "sales_quotations:export",
+        "sales_orders:view", "sales_orders:manage", "sales_orders:approve", "sales_orders:export",
+        "sales_invoices:view", "sales_invoices:manage", "sales_invoices:void", "sales_invoices:export",
         "b2b_customers:view", "b2b_customers:manage",
-        "purchase_orders:view", "purchase_orders:manage",
-        "grn:view", "grn:manage",
-        "purchase_invoices:view", "purchase_invoices:manage",
+        "purchase_orders:view", "purchase_orders:manage", "purchase_orders:approve", "purchase_orders:export",
+        "grn:view", "grn:manage", "grn:export",
+        "purchase_invoices:view", "purchase_invoices:manage", "purchase_invoices:export",
         "suppliers:view", "suppliers:manage",
-        "stock:view", "stock:manage",
+        "stock:view", "stock:manage", "stock:audit",
         "warehouses:view", "warehouses:manage",
         "coupons:view", "coupons:manage",
         "banners:view", "banners:manage",
         "reviews:view", "reviews:manage",
         "staff:view",
-        "reports:view",
+        "reports:view", "reports:export",
+        "payments:view", "payments:manage", "payments:export",
     ],
     UserRole.SALESPERSON: [
         "dashboard:view",
         "catalog:view",
-        "sales_quotations:view", "sales_quotations:manage",
-        "sales_orders:view", "sales_orders:manage",
-        "sales_invoices:view", "sales_invoices:manage",
+        "sales_quotations:view", "sales_quotations:manage", "sales_quotations:export",
+        "sales_orders:view", "sales_orders:manage", "sales_orders:export",
+        "sales_invoices:view", "sales_invoices:manage", "sales_invoices:export",
         "b2b_customers:view", "b2b_customers:manage",
         "stock:view",
+        "payments:view", "payments:manage",
     ],
     UserRole.PURCHASE_MANAGER: [
         "dashboard:view",
-        "purchase_orders:view", "purchase_orders:manage",
-        "grn:view", "grn:manage",
-        "purchase_invoices:view", "purchase_invoices:manage",
+        "purchase_orders:view", "purchase_orders:manage", "purchase_orders:approve", "purchase_orders:export",
+        "grn:view", "grn:manage", "grn:export",
+        "purchase_invoices:view", "purchase_invoices:manage", "purchase_invoices:export",
         "suppliers:view", "suppliers:manage",
-        "stock:view",
+        "stock:view", "stock:audit",
         "warehouses:view",
+        "payments:view", "payments:manage",
     ],
     UserRole.STOCK_KEEPER: [
         "dashboard:view",
@@ -227,11 +259,12 @@ ROLE_PERMISSIONS = {
     ],
     UserRole.ACCOUNTANT: [
         "dashboard:view",
-        "sales_invoices:view", "sales_invoices:manage",
-        "purchase_invoices:view", "purchase_invoices:manage",
+        "sales_invoices:view", "sales_invoices:manage", "sales_invoices:export",
+        "purchase_invoices:view", "purchase_invoices:manage", "purchase_invoices:export",
         "b2b_customers:view",
         "suppliers:view",
-        "reports:view",
+        "reports:view", "reports:export",
+        "payments:view", "payments:manage", "payments:export",
     ],
     UserRole.STAFF: [
         "dashboard:view",
@@ -240,17 +273,6 @@ ROLE_PERMISSIONS = {
     UserRole.CUSTOMER: [],  # No admin permissions
 }
 
-# ─── PERMISSION HIERARCHY (Configurable) ────────────────
-# Defines which action levels automatically grant other action levels.
-# Key = the action the user HAS, Value = list of actions it IMPLIES.
-# This is extensible — add new levels here without touching the checker logic.
-PERMISSION_HIERARCHY = {
-    "manage": ["view"],          # manage implies view
-    # Future extensibility examples (uncomment when needed):
-    # "delete": ["manage", "view"],  # delete implies manage + view
-    # "approve": ["view"],           # approve implies view
-    # "export": ["view"],            # export implies view
-}
 
 
 # ─── USERS ──────────────────────────────────────────────
@@ -752,6 +774,7 @@ class PurchaseInvoice(Base):
     balance_due = Column(Numeric(12, 2), default=0)
     invoice_image_url = Column(String(500), default="")
     notes = Column(Text, default="")
+    terms_conditions = Column(Text, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -794,6 +817,7 @@ class SalesQuotation(Base):
     discount_percentage = Column(Numeric(5, 2), default=0)
     discount_amount = Column(Numeric(12, 2), default=0)
     freight_charges = Column(Numeric(10, 2), default=0)
+    other_charges = Column(Numeric(10, 2), default=0)
     gst_type = Column(SAEnum(GSTType), default=GSTType.CGST_SGST)
     total_tax = Column(Numeric(12, 2), default=0)
     total = Column(Numeric(12, 2), nullable=False)
@@ -840,10 +864,13 @@ class SalesOrder(Base):
     discount_percentage = Column(Numeric(5, 2), default=0)
     discount_amount = Column(Numeric(12, 2), default=0)
     freight_charges = Column(Numeric(10, 2), default=0)
+    other_charges = Column(Numeric(10, 2), default=0)
+    payment_terms = Column(String(50), default="cash")
     gst_type = Column(SAEnum(GSTType), default=GSTType.CGST_SGST)
     total_tax = Column(Numeric(12, 2), default=0)
     total = Column(Numeric(12, 2), nullable=False)
     notes = Column(Text, default="")
+    terms_conditions = Column(Text, default="")
     created_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

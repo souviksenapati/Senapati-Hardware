@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Printer, X } from 'lucide-react';
+import { Plus, Search, Eye, Printer, X, CreditCard } from 'lucide-react';
 import api from '../../api';
+import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
+import PrintDownloadMenu from '../../components/PrintDownloadMenu';
+import { generatePurchaseInvoicePDF } from '../../utils/pdfGenerator';
 
 export default function AdminPurchaseInvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -9,6 +13,9 @@ export default function AdminPurchaseInvoicesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [paymentModal, setPaymentModal] = useState(null); // { invoice } or null
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [selectedInvoiceView, setSelectedInvoiceView] = useState(null);
   const [formData, setFormData] = useState({
     invoice_number: '',
     supplier_id: null,
@@ -36,7 +43,7 @@ export default function AdminPurchaseInvoicesPage() {
       setInvoices(res.data);
     } catch (error) {
       console.error('Failed to fetch invoices:', error);
-      alert('Failed to load purchase invoices');
+      toast.error('Failed to load purchase invoices');
     }
     setLoading(false);
   };
@@ -46,15 +53,15 @@ export default function AdminPurchaseInvoicesPage() {
 
     // Validation
     if (!formData.invoice_number.trim()) {
-      alert('Please enter invoice number');
+      toast.error('Please enter invoice number');
       return;
     }
     if (!formData.supplier_id) {
-      alert('Please select a supplier');
+      toast.error('Please select a supplier');
       return;
     }
     if (formData.items.length === 0 || !formData.items[0].product_id) {
-      alert('Please add at least one item');
+      toast.error('Please add at least one item');
       return;
     }
 
@@ -64,13 +71,34 @@ export default function AdminPurchaseInvoicesPage() {
         invoice_number: formData.invoice_number.toUpperCase()
       };
       await api.post('/purchases/invoices', data);
-      alert('Purchase invoice created successfully! Supplier balance updated.');
+      toast.success('Purchase invoice created! Supplier balance updated.');
       setShowForm(false);
       resetForm();
       fetchInvoices();
     } catch (error) {
       console.error('Failed to create invoice:', error);
-      alert(error.response?.data?.detail || 'Failed to create purchase invoice');
+      toast.error(error.response?.data?.detail || 'Failed to create purchase invoice');
+    }
+  };
+
+  const handleRecordPayment = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) { toast.error('Enter a valid payment amount'); return; }
+    const inv = paymentModal;
+    const newPaidTotal = parseFloat(inv.paid_amount || 0) + amount;
+    if (newPaidTotal > parseFloat(inv.total)) {
+      toast.error(`Payment exceeds balance due (₹${parseFloat(inv.balance_due).toFixed(2)})`);
+      return;
+    }
+    try {
+      await api.put(`/purchases/invoices/${inv.id}`, { paid_amount: newPaidTotal });
+      toast.success(newPaidTotal >= parseFloat(inv.total) ? 'Invoice marked as PAID! Supplier balance updated.' : 'Partial payment recorded.');
+      setPaymentModal(null);
+      setPaymentAmount('');
+      fetchInvoices();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to record payment');
     }
   };
 
@@ -172,12 +200,12 @@ export default function AdminPurchaseInvoicesPage() {
 
   const filteredInvoices = invoices.filter(inv =>
     inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inv.supplier?.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    inv.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const fetchSuppliers = async (query) => {
-    const res = await api.get('/suppliers/search', { params: { query } });
-    return res.data.map(s => ({ value: s.id, label: `${s.supplier_name} (${s.supplier_code})` }));
+    const res = await api.get('/suppliers/search', { params: { q: query } });
+    return res.data.map(s => ({ value: s.id, label: `${s.name} (${s.supplier_code})` }));
   };
 
   const fetchProducts = async (query) => {
@@ -203,9 +231,11 @@ export default function AdminPurchaseInvoicesPage() {
           <h1 className="text-2xl font-bold text-gray-800">Purchase Invoices</h1>
           <p className="text-sm text-gray-600">Manage supplier invoices and payments</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" /> New Invoice
-        </button>
+        <PermissionGuard permission="purchase_invoices:manage">
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-5 h-5" /> New Invoice
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Filters */}
@@ -233,7 +263,7 @@ export default function AdminPurchaseInvoicesPage() {
       </div>
 
       {/* Invoices Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <table className="w-full">
           <thead className="bg-gray-100 border-b">
             <tr>
@@ -256,10 +286,10 @@ export default function AdminPurchaseInvoicesPage() {
               filteredInvoices.map(inv => (
                 <tr key={inv.id} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-medium text-gray-900">{inv.invoice_number}</td>
-                  <td className="p-4">{inv.supplier?.supplier_name || '-'}</td>
+                  <td className="p-4">{inv.supplier?.name || '-'}</td>
                   <td className="p-4">{new Date(inv.invoice_date).toLocaleDateString()}</td>
                   <td className="p-4">{new Date(inv.due_date).toLocaleDateString()}</td>
-                  <td className="p-4 text-right font-semibold">₹{inv.total_amount?.toFixed(2)}</td>
+                  <td className="p-4 text-right font-semibold">₹{inv.total?.toFixed(2)}</td>
                   <td className={`p-4 text-right font-semibold ${inv.balance_due > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ₹{inv.balance_due?.toFixed(2)}
                   </td>
@@ -274,12 +304,26 @@ export default function AdminPurchaseInvoicesPage() {
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
-                      <button className="text-blue-600 hover:text-blue-800" title="View">
+                      <button onClick={() => setSelectedInvoiceView(inv)} className="text-blue-600 hover:text-blue-800" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button className="text-gray-600 hover:text-gray-800" title="Print">
-                        <Printer className="w-5 h-5" />
-                      </button>
+                      <PermissionGuard permission="purchase_invoices:manage">
+                        {inv.status !== 'paid' && (
+                          <button
+                            onClick={() => { setPaymentModal(inv); setPaymentAmount(''); }}
+                            className="text-green-600 hover:text-green-800"
+                            title="Record Payment"
+                          >
+                            <CreditCard className="w-5 h-5" />
+                          </button>
+                        )}
+                      </PermissionGuard>
+                      <PermissionGuard permission="purchase_invoices:export">
+                        <PrintDownloadMenu
+                          documentGenerator={() => generatePurchaseInvoicePDF(inv)}
+                          fileName={`PI-${inv.invoice_number}.pdf`}
+                        />
+                      </PermissionGuard>
                     </div>
                   </td>
                 </tr>
@@ -612,6 +656,117 @@ export default function AdminPurchaseInvoicesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Record Payment Modal */}
+      {paymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Record Payment</h2>
+              <button onClick={() => setPaymentModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Invoice</span>
+                <span className="font-semibold">{paymentModal.invoice_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Supplier</span>
+                <span className="font-semibold">{paymentModal.supplier?.name || '-'}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-gray-500">Invoice Total</span>
+                <span className="font-semibold">₹{parseFloat(paymentModal.total).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Already Paid</span>
+                <span className="font-semibold text-green-600">₹{parseFloat(paymentModal.paid_amount || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold">
+                <span className="text-gray-700">Balance Due</span>
+                <span className="text-red-600">₹{parseFloat(paymentModal.balance_due || 0).toFixed(2)}</span>
+              </div>
+            </div>
+            <form onSubmit={handleRecordPayment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount (₹) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={parseFloat(paymentModal.balance_due || 0)}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="input w-full text-lg font-semibold"
+                  placeholder={`Max ₹${parseFloat(paymentModal.balance_due || 0).toFixed(2)}`}
+                  autoFocus
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setPaymentAmount(String(parseFloat(paymentModal.balance_due || 0)))}
+                  className="text-xs text-blue-600 hover:underline mt-1"
+                >
+                  Pay full balance
+                </button>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setPaymentModal(null)} className="btn-secondary">Cancel</button>
+                <button type="submit" className="btn-primary flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Record Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Invoice Detail View Modal */}
+      {selectedInvoiceView && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Purchase Invoice — {selectedInvoiceView.invoice_number}</h2>
+              <button onClick={() => setSelectedInvoiceView(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{selectedInvoiceView.supplier?.name || '-'}</span></div>
+              <div><span className="text-gray-500">Status:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedInvoiceView.status === 'paid' ? 'bg-green-100 text-green-700' : selectedInvoiceView.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{selectedInvoiceView.status?.replace('_', ' ').toUpperCase()}</span></div>
+              <div><span className="text-gray-500">Invoice Date:</span> <span className="font-medium">{new Date(selectedInvoiceView.invoice_date).toLocaleDateString()}</span></div>
+              <div><span className="text-gray-500">Due Date:</span> <span className="font-medium">{selectedInvoiceView.due_date ? new Date(selectedInvoiceView.due_date).toLocaleDateString() : '-'}</span></div>
+              <div><span className="text-gray-500">Payment Terms:</span> <span className="font-medium">{selectedInvoiceView.payment_terms || '-'}</span></div>
+              <div><span className="text-gray-500">GST Type:</span> <span className="font-medium">{selectedInvoiceView.gst_type?.toUpperCase() || '-'}</span></div>
+            </div>
+            <h3 className="font-semibold text-gray-700 mb-2">Items</h3>
+            <div className="border rounded-lg overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50"><tr>
+                  <th className="text-left p-2">Product</th><th className="text-center p-2">Qty</th>
+                  <th className="text-right p-2">Unit Price</th><th className="text-right p-2">Total</th>
+                </tr></thead>
+                <tbody>{(selectedInvoiceView.items || []).map((item, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="p-2">{item.product?.name || item.product_id}</td>
+                    <td className="p-2 text-center">{item.quantity}</td>
+                    <td className="p-2 text-right">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                    <td className="p-2 text-right font-semibold">₹{parseFloat(item.line_total || (item.unit_price * item.quantity) || 0).toFixed(2)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="space-y-1 text-sm border-t pt-3">
+              <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-bold text-blue-700">₹{parseFloat(selectedInvoiceView.total || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Paid</span><span className="text-green-600 font-semibold">₹{parseFloat(selectedInvoiceView.paid_amount || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-700 font-medium">Balance Due</span><span className="text-red-600 font-bold">₹{parseFloat(selectedInvoiceView.balance_due || 0).toFixed(2)}</span></div>
+            </div>
+            {selectedInvoiceView.notes && <p className="text-sm text-gray-500 mt-3"><span className="font-medium">Notes:</span> {selectedInvoiceView.notes}</p>}
+            {selectedInvoiceView.terms_conditions && <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Terms:</span> {selectedInvoiceView.terms_conditions}</p>}
+            <div className="flex justify-end mt-4">
+              <button onClick={() => setSelectedInvoiceView(null)} className="btn-secondary">Close</button>
+            </div>
           </div>
         </div>
       )}

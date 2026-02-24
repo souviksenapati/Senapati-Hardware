@@ -4,6 +4,9 @@ import { Plus, Search, Eye, Printer, X, Truck } from 'lucide-react';
 import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
+import PrintDownloadMenu from '../../components/PrintDownloadMenu';
+import { generateSalesOrderPDF } from '../../utils/pdfGenerator';
 
 export default function AdminSalesOrdersPage() {
   const location = useLocation();
@@ -12,6 +15,7 @@ export default function AdminSalesOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [formData, setFormData] = useState({
     order_number: '',
     customer_id: null,
@@ -63,7 +67,7 @@ export default function AdminSalesOrdersPage() {
       setOrders(res.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
-      alert('Failed to load sales orders');
+      toast.error('Failed to load sales orders');
     }
     setLoading(false);
   };
@@ -214,8 +218,8 @@ export default function AdminSalesOrdersPage() {
   );
 
   const fetchCustomers = async (query) => {
-    const res = await api.get('/b2b-customers/search', { params: { query } });
-    return res.data.map(c => ({ value: c.id, label: `${c.name} (${c.customer_code})` }));
+    const res = await api.get('/b2b-customers/search', { params: { q: query } });
+    return res.data.map(c => ({ value: c.id, label: c.label || `${c.name} (${c.customer_code})` }));
   };
 
   const fetchProducts = async (query) => {
@@ -234,9 +238,11 @@ export default function AdminSalesOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-800">Sales Orders</h1>
           <p className="text-sm text-gray-600">Manage confirmed customer orders</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" /> New Order
-        </button>
+        <PermissionGuard permission="sales_orders:manage">
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-5 h-5" /> New Order
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Filters */}
@@ -265,7 +271,7 @@ export default function AdminSalesOrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <table className="w-full">
           <thead className="bg-gray-100 border-b">
             <tr>
@@ -287,10 +293,10 @@ export default function AdminSalesOrdersPage() {
               filteredOrders.map(ord => (
                 <tr key={ord.id} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-medium text-gray-900">{ord.order_number}</td>
-                  <td className="p-4">{ord.customer?.customer_name || '-'}</td>
+                  <td className="p-4">{ord.customer?.name || '-'}</td>
                   <td className="p-4">{new Date(ord.order_date).toLocaleDateString()}</td>
                   <td className="p-4">{ord.expected_delivery_date ? new Date(ord.expected_delivery_date).toLocaleDateString() : '-'}</td>
-                  <td className="p-4 text-right font-semibold">₹{ord.total_amount?.toFixed(2)}</td>
+                  <td className="p-4 text-right font-semibold">₹{parseFloat(ord.total || 0).toFixed(2)}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${ord.status === 'delivered' ? 'bg-green-100 text-green-700' :
                       ord.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
@@ -304,20 +310,25 @@ export default function AdminSalesOrdersPage() {
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
-                      <button className="text-blue-600 hover:text-blue-800" title="View">
+                      <button onClick={() => setSelectedOrder(ord)} className="text-blue-600 hover:text-blue-800" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button className="text-gray-600 hover:text-gray-800" title="Print">
-                        <Printer className="w-5 h-5" />
-                      </button>
+                      <PermissionGuard permission="sales_orders:export">
+                        <PrintDownloadMenu
+                          documentGenerator={() => generateSalesOrderPDF(ord)}
+                          fileName={`SO-${ord.order_number}.pdf`}
+                        />
+                      </PermissionGuard>
                       {ord.status === 'confirmed' && (
-                        <button
-                          onClick={() => generateInvoice(ord.id)}
-                          className="text-green-600 hover:text-green-800"
-                          title="Generate Invoice"
-                        >
-                          <Truck className="w-5 h-5" />
-                        </button>
+                        <PermissionGuard permission="sales_invoices:manage">
+                          <button
+                            onClick={() => generateInvoice(ord.id)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Generate Invoice"
+                          >
+                            <Truck className="w-5 h-5" />
+                          </button>
+                        </PermissionGuard>
                       )}
                     </div>
                   </td>
@@ -647,6 +658,50 @@ export default function AdminSalesOrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Sales Order — {selectedOrder.order_number}</h2>
+              <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+              <div><span className="text-gray-500">Customer:</span> <span className="font-medium">{selectedOrder.customer?.name || '-'}</span></div>
+              <div><span className="text-gray-500">Status:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedOrder.status === 'delivered' ? 'bg-green-100 text-green-700' : selectedOrder.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : selectedOrder.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{selectedOrder.status?.toUpperCase()}</span></div>
+              <div><span className="text-gray-500">Order Date:</span> <span className="font-medium">{new Date(selectedOrder.order_date).toLocaleDateString()}</span></div>
+              <div><span className="text-gray-500">Expected Delivery:</span> <span className="font-medium">{selectedOrder.expected_delivery_date ? new Date(selectedOrder.expected_delivery_date).toLocaleDateString() : '-'}</span></div>
+              <div><span className="text-gray-500">Payment Terms:</span> <span className="font-medium">{selectedOrder.payment_terms || '-'}</span></div>
+              <div><span className="text-gray-500">GST Type:</span> <span className="font-medium">{selectedOrder.gst_type?.toUpperCase() || '-'}</span></div>
+            </div>
+            <h3 className="font-semibold text-gray-700 mb-2">Items</h3>
+            <div className="border rounded-lg overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50"><tr>
+                  <th className="text-left p-2">Product</th><th className="text-center p-2">Qty</th>
+                  <th className="text-right p-2">Unit Price</th><th className="text-right p-2">Total</th>
+                </tr></thead>
+                <tbody>{(selectedOrder.items || []).map((item, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="p-2">{item.product?.name || item.product_id}</td>
+                    <td className="p-2 text-center">{item.quantity}</td>
+                    <td className="p-2 text-right">₹{parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td className="p-2 text-right font-semibold">₹{parseFloat(item.line_total || item.unit_price * item.quantity).toFixed(2)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="flex justify-between text-lg font-bold text-blue-700 border-t pt-3">
+              <span>Total</span><span>₹{parseFloat(selectedOrder.total || 0).toFixed(2)}</span>
+            </div>
+            {selectedOrder.notes && <p className="text-sm text-gray-500 mt-3"><span className="font-medium">Notes:</span> {selectedOrder.notes}</p>}
+            {selectedOrder.terms_conditions && <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Terms:</span> {selectedOrder.terms_conditions}</p>}
+            <div className="flex justify-end mt-4">
+              <button onClick={() => setSelectedOrder(null)} className="btn-secondary">Close</button>
+            </div>
           </div>
         </div>
       )}

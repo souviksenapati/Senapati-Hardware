@@ -4,19 +4,19 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Coupon, DiscountType
 from app.schemas.schemas import CouponCreate, CouponResponse, CouponValidate
-from app.utils.auth import require_admin
+from app.utils.auth import require_permission
 from typing import List
 
 router = APIRouter(prefix="/api/coupons", tags=["Coupons"])
 
 
 @router.get("", response_model=List[CouponResponse])
-def list_coupons(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def list_coupons(user=Depends(require_permission("coupons:view")), db: Session = Depends(get_db)):
     return db.query(Coupon).order_by(Coupon.created_at.desc()).all()
 
 
 @router.post("", response_model=CouponResponse)
-def create_coupon(req: CouponCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def create_coupon(req: CouponCreate, user=Depends(require_permission("coupons:manage")), db: Session = Depends(get_db)):
     if db.query(Coupon).filter(Coupon.code == req.code).first():
         raise HTTPException(400, "Coupon code already exists")
     coupon = Coupon(**req.model_dump())
@@ -27,7 +27,7 @@ def create_coupon(req: CouponCreate, admin=Depends(require_admin), db: Session =
 
 
 @router.put("/{coupon_id}", response_model=CouponResponse)
-def update_coupon(coupon_id: str, req: CouponCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def update_coupon(coupon_id: str, req: CouponCreate, user=Depends(require_permission("coupons:manage")), db: Session = Depends(get_db)):
     coupon = db.query(Coupon).filter(Coupon.id == coupon_id).first()
     if not coupon:
         raise HTTPException(404, "Coupon not found")
@@ -39,7 +39,7 @@ def update_coupon(coupon_id: str, req: CouponCreate, admin=Depends(require_admin
 
 
 @router.delete("/{coupon_id}")
-def delete_coupon(coupon_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def delete_coupon(coupon_id: str, user=Depends(require_permission("coupons:manage")), db: Session = Depends(get_db)):
     coupon = db.query(Coupon).filter(Coupon.id == coupon_id).first()
     if not coupon:
         raise HTTPException(404, "Coupon not found")

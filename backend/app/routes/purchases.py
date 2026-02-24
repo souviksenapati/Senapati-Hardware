@@ -53,11 +53,13 @@ def create_purchase_order(
     discount_amount = subtotal * (po.discount_percentage / 100)
     total = subtotal - discount_amount + po.freight_charges + po.other_charges + tax_amount
     
+    
     # Create PO
     db_po = PurchaseOrder(
         po_number=po.po_number,
         supplier_id=po.supplier_id,
         warehouse_id=po.warehouse_id,
+        status=PurchaseOrderStatus.PENDING, # Explicitly set to pending
         po_date=po.po_date,
         expected_delivery_date=po.expected_delivery_date,
         subtotal=subtotal,
@@ -103,6 +105,66 @@ def create_purchase_order(
     ).filter(PurchaseOrder.id == db_po.id).first()
     
     return db_po
+
+
+@router.post("/purchase-orders/{po_id}/approve")
+def approve_purchase_order(
+    po_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("purchase_orders:approve"))
+):
+    """Approve a purchase order"""
+    po = db.query(PurchaseOrder).filter(PurchaseOrder.id == po_id).first()
+    if not po:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+    
+    if po.status != PurchaseOrderStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Only pending orders can be approved")
+    
+    po.status = PurchaseOrderStatus.APPROVED
+    db.commit()
+    return {"message": "Purchase Order approved", "id": po.id}
+
+
+@router.get("/purchase-orders/export")
+def export_purchase_orders(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("purchase_orders:export"))
+):
+    """Export Purchase Orders to CSV"""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    orders = db.query(PurchaseOrder).options(joinedload(PurchaseOrder.supplier)).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow([
+        "PO Number", "Date", "Supplier", "Status", 
+        "Total Amount", "Warehouse ID", "Created By"
+    ])
+    
+    for po in orders:
+        writer.writerow([
+            po.po_number,
+            po.po_date,
+            po.supplier.name if po.supplier else "N/A",
+            po.status,
+            po.total,
+            po.warehouse_id,
+            po.created_by
+        ])
+        
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=purchase_orders.csv"}
+    )
 
 
 @router.get("/purchase-orders", response_model=List[PurchaseOrderResponse])
@@ -217,14 +279,14 @@ def create_grn(
         # Update product stock
         product = db.query(Product).filter(Product.id == item.product_id).first()
         if product:
-            product.stock += item.received_quantity
+            product.stock = Product.stock + item.received_quantity
             
             # Create inventory log
             log = InventoryLog(
                 product_id=item.product_id,
                 change=item.received_quantity,
                 reason=f"GRN: {grn.grn_number}",
-                performed_by=current_user.email,
+                performed_by=current_user.id,
                 transaction_type="inward",
                 invoice_number=grn.supplier_invoice_number,
                 supplier_name=db.query(Supplier).filter(Supplier.id == grn.supplier_id).first().name,
@@ -249,6 +311,47 @@ def create_grn(
     ).filter(GoodsReceivedNote.id == db_grn.id).first()
     
     return db_grn
+
+
+@router.get("/grn/export")
+def export_grn(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_permission("grn:export"))
+):
+    """Export GRN to CSV"""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    grns = db.query(GoodsReceivedNote).options(joinedload(GoodsReceivedNote.supplier)).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow([
+        "GRN Number", "Date", "Supplier", "Invoice Number", 
+        "Status", "Warehouse ID", "Created By"
+    ])
+    
+    for grn in grns:
+        writer.writerow([
+            grn.grn_number,
+            grn.received_date,
+            grn.supplier.name if grn.supplier else "N/A",
+            grn.supplier_invoice_number,
+            grn.status,
+            grn.warehouse_id,
+            grn.created_by
+        ])
+        
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=grn_export.csv"}
+    )
 
 
 @router.get("/grn", response_model=List[GRNResponse])
@@ -343,7 +446,12 @@ def create_purchase_invoice(
             "credit_15": 15,
             "credit_30": 30,
             "credit_60": 60,
-            "credit_90": 90
+            "credit_90": 90,
+            # Also accept net_* variants sent by the frontend
+            "net_15": 15,
+            "net_30": 30,
+            "net_60": 60,
+            "net_90": 90
         }
         days = days_map.get(invoice.payment_terms, 0)
         due_date = invoice.invoice_date + timedelta(days=days)
@@ -372,6 +480,7 @@ def create_purchase_invoice(
         balance_due=balance_due,
         invoice_image_url=invoice.invoice_image_url,
         notes=invoice.notes,
+        terms_conditions=invoice.terms_conditions,
         status="pending"
     )
     db.add(db_invoice)
@@ -466,14 +575,56 @@ def update_purchase_invoice(
     db: Session = Depends(get_db),
     current_user = Depends(require_permission("purchase_invoices:manage"))
 ):
-    """Update a purchase invoice"""
+    """Update a purchase invoice (status, payment, notes)"""
     invoice = db.query(PurchaseInvoice).filter(PurchaseInvoice.id == invoice_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
-    for key, value in invoice_update.model_dump(exclude_unset=True).items():
+
+    update_data = invoice_update.model_dump(exclude_unset=True)
+
+    # Handle paid_amount specially — recalculate balance and auto-set status
+    if "paid_amount" in update_data:
+        from decimal import Decimal as D
+        new_paid = D(str(update_data["paid_amount"]))
+        prev_paid = D(str(invoice.paid_amount or 0))
+        additional_payment = new_paid - prev_paid
+
+        if additional_payment < 0:
+            raise HTTPException(status_code=400, detail="Paid amount cannot be less than already paid amount")
+        if new_paid > D(str(invoice.total)):
+            raise HTTPException(status_code=400, detail="Paid amount cannot exceed invoice total")
+
+        invoice.paid_amount = new_paid
+        invoice.balance_due = D(str(invoice.total)) - new_paid
+
+        # Auto-set status based on balance
+        if invoice.balance_due <= 0:
+            invoice.status = "paid"
+        elif new_paid > 0:
+            invoice.status = "partially_paid"
+        else:
+            invoice.status = "pending"
+
+        # Reduce supplier outstanding balance by the additional payment made
+        if additional_payment > 0:
+            supplier = db.query(Supplier).filter(Supplier.id == invoice.supplier_id).first()
+            if supplier:
+                supplier.current_balance -= additional_payment
+
+        # Remove paid_amount from update_data so we don't overwrite what we set
+        del update_data["paid_amount"]
+
+    # Apply remaining fields (status override, notes)
+    for key, value in update_data.items():
         setattr(invoice, key, value)
-    
+
     db.commit()
     db.refresh(invoice)
+
+    # Load relationships for response
+    invoice = db.query(PurchaseInvoice).options(
+        joinedload(PurchaseInvoice.supplier),
+        joinedload(PurchaseInvoice.items)
+    ).filter(PurchaseInvoice.id == invoice_id).first()
     return invoice
+

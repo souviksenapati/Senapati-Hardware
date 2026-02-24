@@ -848,6 +848,7 @@ class PurchaseInvoiceCreate(BaseModel):
     gst_type: str = "cgst_sgst"
     invoice_image_url: str = ""
     notes: str = ""
+    terms_conditions: str = ""
     items: List[PurchaseInvoiceItemCreate]
 
 class PurchaseInvoiceUpdate(BaseModel):
@@ -880,6 +881,7 @@ class PurchaseInvoiceResponse(BaseModel):
     balance_due: float
     invoice_image_url: str
     notes: str
+    terms_conditions: str
     created_at: datetime
     updated_at: datetime
     supplier: Optional[SupplierResponse] = None
@@ -917,6 +919,7 @@ class SalesQuotationCreate(BaseModel):
     valid_until: Optional[date] = None
     discount_percentage: float = 0
     freight_charges: float = 0
+    other_charges: float = 0
     gst_type: str = "cgst_sgst"
     notes: str = ""
     terms_conditions: str = ""
@@ -938,6 +941,7 @@ class SalesQuotationResponse(BaseModel):
     discount_percentage: float
     discount_amount: float
     freight_charges: float
+    other_charges: float
     gst_type: str
     total_tax: float
     total: float
@@ -982,8 +986,11 @@ class SalesOrderCreate(BaseModel):
     expected_delivery_date: Optional[date] = None
     discount_percentage: float = 0
     freight_charges: float = 0
+    other_charges: float = 0
+    payment_terms: str = "cash"
     gst_type: str = "cgst_sgst"
     notes: str = ""
+    terms_conditions: str = ""
     items: List[SalesOrderItemCreate]
 
 class SalesOrderUpdate(BaseModel):
@@ -1004,10 +1011,13 @@ class SalesOrderResponse(BaseModel):
     discount_percentage: float
     discount_amount: float
     freight_charges: float
+    other_charges: float
+    payment_terms: str
     gst_type: str
     total_tax: float
     total: float
     notes: str
+    terms_conditions: str
     created_at: datetime
     updated_at: datetime
     customer: Optional[B2BCustomerResponse] = None

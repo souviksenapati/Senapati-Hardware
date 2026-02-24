@@ -24,6 +24,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Startup Security Check
+@app.on_event("startup")
+async def startup_event():
+    if settings.SECRET_KEY == "change-me" and os.getenv("ENVIRONMENT", "dev") == "production":
+        # In production, we must fail if the secret key is default
+        import logging
+        logging.error("CRITICAL: Application failed to start. SECRET_KEY is set to default 'change-me' in production environment.")
+        # We can't easily exit here without crashing the worker, 
+        # but we can log a severe error or potentially raise an exception to stop startup.
+        raise RuntimeError("CRITICAL SECURITY RISK: SECRET_KEY is default 'change-me'. Update .env file immediately.")
+
 # CORS
 app.add_middleware(
     CORSMiddleware,

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.models import Review, Product, User
 from app.schemas.schemas import ReviewCreate, ReviewResponse
-from app.utils.auth import get_current_user, require_admin
+from app.utils.auth import get_current_user, require_permission
 from typing import List
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
@@ -38,7 +38,7 @@ def add_review(product_id: str, req: ReviewCreate, user: User = Depends(get_curr
 
 
 @router.get("/pending", response_model=List[ReviewResponse])
-def get_pending_reviews(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def get_pending_reviews(user=Depends(require_permission("reviews:view")), db: Session = Depends(get_db)):
     reviews = db.query(Review).options(joinedload(Review.user)).filter(
         Review.is_approved == False
     ).order_by(Review.created_at.desc()).all()
@@ -46,7 +46,7 @@ def get_pending_reviews(admin=Depends(require_admin), db: Session = Depends(get_
 
 
 @router.put("/{review_id}/approve")
-def approve_review(review_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def approve_review(review_id: str, user=Depends(require_permission("reviews:manage")), db: Session = Depends(get_db)):
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
         raise HTTPException(404, "Review not found")
@@ -56,7 +56,7 @@ def approve_review(review_id: str, admin=Depends(require_admin), db: Session = D
 
 
 @router.delete("/{review_id}")
-def delete_review(review_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def delete_review(review_id: str, user=Depends(require_permission("reviews:manage")), db: Session = Depends(get_db)):
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
         raise HTTPException(404, "Review not found")

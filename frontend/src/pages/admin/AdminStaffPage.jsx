@@ -19,7 +19,13 @@ const ROLE_OPTIONS = [
 const getRoleDisplay = (role) => ROLE_OPTIONS.find(r => r.value === role) || { label: role, color: 'bg-gray-100 text-gray-600 border-gray-200' };
 
 // ─── Permission Hierarchy (mirrors backend) ────────
-const PERMISSION_HIERARCHY = { manage: ['view'] };
+const PERMISSION_HIERARCHY = {
+  manage: ['view', 'export'],
+  approve: ['view'],
+  void: ['view'],
+  audit: ['view'],
+  export: ['view']
+};
 
 
 export default function AdminStaffPage() {
@@ -463,9 +469,9 @@ export default function AdminStaffPage() {
                                       <div className="font-medium truncate">{p.label}</div>
                                       <div className="text-xs text-gray-400 font-mono">{p.key}</div>
                                     </div>
-                                    {isManage && (
+                                    {PERMISSION_HIERARCHY[parts[1]] && (
                                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 font-medium flex-shrink-0">
-                                        +view
+                                        {PERMISSION_HIERARCHY[parts[1]].map(i => `+${i}`).join(' ')}
                                       </span>
                                     )}
                                   </button>

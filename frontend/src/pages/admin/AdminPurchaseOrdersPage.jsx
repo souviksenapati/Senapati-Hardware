@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Eye, Trash2, Search, FileText } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Search, FileText, Printer } from 'lucide-react';
 import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
+import PrintDownloadMenu from '../../components/PrintDownloadMenu';
+import { generatePurchaseOrderPDF } from '../../utils/pdfGenerator';
 
 export default function AdminPurchaseOrdersPage() {
   const [pos, setPos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPO, setEditingPO] = useState(null);
+  const [selectedPO, setSelectedPO] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -159,7 +163,6 @@ export default function AdminPurchaseOrdersPage() {
       return;
     }
     try {
-      const token = sessionStorage.getItem('token');
       const slug = newProduct.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const productData = {
         ...newProduct,
@@ -261,8 +264,6 @@ export default function AdminPurchaseOrdersPage() {
     }
 
     try {
-      const token = sessionStorage.getItem('token');
-
       // Clean up data
       const data = {
         ...formData,
@@ -332,13 +333,15 @@ export default function AdminPurchaseOrdersPage() {
           <h1 className="text-3xl font-bold text-gray-800">Purchase Orders</h1>
           <p className="text-gray-600 mt-1">Manage purchase orders</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingPO(null); resetForm(); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create PO</span>
-        </button>
+        <PermissionGuard permission="purchase_orders:manage">
+          <button
+            onClick={() => { setShowForm(true); setEditingPO(null); resetForm(); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create PO</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {!showForm && (
@@ -368,7 +371,7 @@ export default function AdminPurchaseOrdersPage() {
             </select>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-visible">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -398,9 +401,15 @@ export default function AdminPurchaseOrdersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800">
+                        <button onClick={() => setSelectedPO(po)} className="text-blue-600 hover:text-blue-800" title="View Details">
                           <Eye className="w-4 h-4" />
                         </button>
+                        <PermissionGuard permission="purchase_orders:export">
+                          <PrintDownloadMenu
+                            documentGenerator={() => generatePurchaseOrderPDF(po)}
+                            fileName={`PO-${po.po_number}.pdf`}
+                          />
+                        </PermissionGuard>
                       </div>
                     </td>
                   </tr>
@@ -848,6 +857,52 @@ export default function AdminPurchaseOrdersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* PO Detail Modal */}
+      {selectedPO && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Purchase Order — {selectedPO.po_number}</h2>
+              <button onClick={() => setSelectedPO(null)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+              <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{selectedPO.supplier?.name || '-'}</span></div>
+              <div><span className="text-gray-500">Warehouse:</span> <span className="font-medium">{selectedPO.warehouse?.name || '-'}</span></div>
+              <div><span className="text-gray-500">PO Date:</span> <span className="font-medium">{new Date(selectedPO.po_date).toLocaleDateString()}</span></div>
+              <div><span className="text-gray-500">Expected Delivery:</span> <span className="font-medium">{selectedPO.expected_delivery_date ? new Date(selectedPO.expected_delivery_date).toLocaleDateString() : '-'}</span></div>
+              <div><span className="text-gray-500">Status:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selectedPO.status === 'approved' ? 'bg-green-100 text-green-700' : selectedPO.status === 'received' ? 'bg-blue-100 text-blue-700' : selectedPO.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{selectedPO.status?.toUpperCase()}</span></div>
+              <div><span className="text-gray-500">GST Type:</span> <span className="font-medium">{selectedPO.gst_type?.toUpperCase() || '-'}</span></div>
+            </div>
+            <h3 className="font-semibold text-gray-700 mb-2">Items</h3>
+            <div className="border rounded-lg overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50"><tr>
+                  <th className="text-left p-2">Product</th>
+                  <th className="text-center p-2">Qty</th>
+                  <th className="text-right p-2">Unit Price</th>
+                  <th className="text-right p-2">Total</th>
+                </tr></thead>
+                <tbody>{(selectedPO.items || []).map((item, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="p-2">{item.product?.name || item.product_id}</td>
+                    <td className="p-2 text-center">{item.quantity}</td>
+                    <td className="p-2 text-right">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                    <td className="p-2 text-right font-semibold">₹{parseFloat(item.line_total || (item.unit_price * item.quantity) || 0).toFixed(2)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="flex justify-between text-lg font-bold text-blue-700 border-t pt-3">
+              <span>Total</span><span>₹{parseFloat(selectedPO.total || 0).toLocaleString()}</span>
+            </div>
+            {selectedPO.notes && <p className="text-sm text-gray-500 mt-3"><span className="font-medium">Notes:</span> {selectedPO.notes}</p>}
+            {selectedPO.terms_conditions && <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Terms:</span> {selectedPO.terms_conditions}</p>}
+            <div className="flex justify-end mt-4">
+              <button onClick={() => setSelectedPO(null)} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-700">Close</button>
+            </div>
           </div>
         </div>
       )}

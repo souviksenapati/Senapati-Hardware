@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Banner
 from app.schemas.schemas import BannerCreate, BannerResponse
-from app.utils.auth import require_admin
+from app.utils.auth import require_permission
 from typing import List
 
 router = APIRouter(prefix="/api/banners", tags=["Banners"])
@@ -15,12 +15,12 @@ def list_active_banners(db: Session = Depends(get_db)):
 
 
 @router.get("/all", response_model=List[BannerResponse])
-def list_all_banners(admin=Depends(require_admin), db: Session = Depends(get_db)):
+def list_all_banners(user=Depends(require_permission("banners:view")), db: Session = Depends(get_db)):
     return db.query(Banner).order_by(Banner.sort_order).all()
 
 
 @router.post("", response_model=BannerResponse)
-def create_banner(req: BannerCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def create_banner(req: BannerCreate, user=Depends(require_permission("banners:manage")), db: Session = Depends(get_db)):
     banner = Banner(**req.model_dump())
     db.add(banner)
     db.commit()
@@ -29,7 +29,7 @@ def create_banner(req: BannerCreate, admin=Depends(require_admin), db: Session =
 
 
 @router.put("/{banner_id}", response_model=BannerResponse)
-def update_banner(banner_id: str, req: BannerCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def update_banner(banner_id: str, req: BannerCreate, user=Depends(require_permission("banners:manage")), db: Session = Depends(get_db)):
     banner = db.query(Banner).filter(Banner.id == banner_id).first()
     if not banner:
         raise HTTPException(404, "Banner not found")
@@ -41,7 +41,7 @@ def update_banner(banner_id: str, req: BannerCreate, admin=Depends(require_admin
 
 
 @router.delete("/{banner_id}")
-def delete_banner(banner_id: str, admin=Depends(require_admin), db: Session = Depends(get_db)):
+def delete_banner(banner_id: str, user=Depends(require_permission("banners:manage")), db: Session = Depends(get_db)):
     banner = db.query(Banner).filter(Banner.id == banner_id).first()
     if not banner:
         raise HTTPException(404, "Banner not found")

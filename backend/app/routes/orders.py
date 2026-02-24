@@ -12,7 +12,7 @@ from app.models.models import (
 from app.schemas.schemas import (
     OrderCreate, OrderResponse, OrderStatusUpdate, OrderListResponse
 )
-from app.utils.auth import get_current_user, require_admin, require_staff_or_admin
+from app.utils.auth import get_current_user, require_permission
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
@@ -142,7 +142,7 @@ def all_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status: str = Query(None),
-    admin=Depends(require_staff_or_admin),
+    admin=Depends(require_permission("ecom_orders:view")),
     db: Session = Depends(get_db)
 ):
     q = db.query(Order).options(joinedload(Order.items))
@@ -166,7 +166,7 @@ def get_order(order_id: str, user: User = Depends(get_current_user), db: Session
 @router.put("/{order_id}/status", response_model=OrderResponse)
 def update_order_status(
     order_id: str, req: OrderStatusUpdate,
-    admin=Depends(require_staff_or_admin), db: Session = Depends(get_db)
+    admin=Depends(require_permission("ecom_orders:manage")), db: Session = Depends(get_db)
 ):
     order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
     if not order:

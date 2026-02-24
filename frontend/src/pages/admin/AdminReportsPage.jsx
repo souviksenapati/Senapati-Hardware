@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BarChart3, Download, Calendar } from 'lucide-react';
 import { adminAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
+import toast from 'react-hot-toast';
 
 export default function AdminReportsPage() {
   const [report, setReport] = useState(null);
@@ -96,8 +97,8 @@ export default function AdminReportsPage() {
                 <div key={i} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${s.status === 'delivered' ? 'bg-green-500' :
-                        s.status === 'cancelled' ? 'bg-red-500' :
-                          s.status === 'shipped' ? 'bg-blue-500' : 'bg-yellow-500'
+                      s.status === 'cancelled' ? 'bg-red-500' :
+                        s.status === 'shipped' ? 'bg-blue-500' : 'bg-yellow-500'
                       }`} />
                     <span className="text-sm capitalize">{s.status}</span>
                   </div>

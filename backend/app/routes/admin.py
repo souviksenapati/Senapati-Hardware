@@ -288,7 +288,7 @@ def update_inventory(
         product_id=product_id,
         change=req.stock_change,
         reason=req.reason,
-        performed_by=admin.id
+        performed_by=user.id
     )
     db.add(log)
     db.commit()
@@ -296,7 +296,7 @@ def update_inventory(
 
 
 @router.get("/inventory/{product_id}/logs", response_model=List[InventoryLogResponse])
-def get_inventory_logs(product_id: str, user=Depends(require_permission("stock:view")), db: Session = Depends(get_db)):
+def get_inventory_logs(product_id: str, user=Depends(require_permission("stock:audit")), db: Session = Depends(get_db)):
     logs = db.query(InventoryLog).options(joinedload(InventoryLog.product)).filter(
         InventoryLog.product_id == product_id
     ).order_by(InventoryLog.created_at.desc()).limit(50).all()
@@ -375,7 +375,7 @@ def create_inventory_transaction(
 def get_all_inventory_transactions(
     transaction_type: str = Query(None),
     limit: int = Query(500),
-    user=Depends(require_permission("stock:view")),
+    user=Depends(require_permission("stock:audit")),
     db: Session = Depends(get_db)
 ):
     """Get all inventory transactions (inward/outward) across all products with product details"""

@@ -3,6 +3,7 @@ import { Eye, Search } from 'lucide-react';
 import { ordersAPI } from '../../api';
 import { LoadingSpinner, StatusBadge } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 const STATUSES = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 
@@ -19,9 +20,9 @@ export default function AdminOrdersPage() {
     const params = { page, page_size: 15 };
     if (status !== 'all') params.status = status;
     ordersAPI.allOrders(params)
-      .then(r => { 
-        setOrders(r.data.orders || []); 
-        setTotal(r.data.total || 0); 
+      .then(r => {
+        setOrders(r.data.orders || []);
+        setTotal(r.data.total || 0);
       })
       .catch(() => toast.error('Failed to load orders'))
       .finally(() => setLoading(false));
@@ -46,9 +47,8 @@ export default function AdminOrdersPage() {
       <div className="flex flex-wrap gap-2 mb-4">
         {STATUSES.map(s => (
           <button key={s} onClick={() => { setStatus(s); setPage(1); }}
-            className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${
-              status === s ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}>
+            className={`px-4 py-1.5 rounded-full text-sm capitalize font-medium transition-colors ${status === s ? 'bg-primary-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}>
             {s}
           </button>
         ))}
@@ -81,14 +81,16 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => setSelected(o)} className="text-gray-400 hover:text-blue-500"><Eye className="w-4 h-4" /></button>
                       {o.status !== 'delivered' && o.status !== 'cancelled' && (
-                        <select className="text-xs border rounded px-1 py-0.5" value="" onChange={e => e.target.value && updateStatus(o.id, e.target.value)}>
-                          <option value="">Update...</option>
-                          {o.status === 'pending' && <option value="confirmed">Confirm</option>}
-                          {o.status === 'confirmed' && <option value="processing">Processing</option>}
-                          {o.status === 'processing' && <option value="shipped">Ship</option>}
-                          {o.status === 'shipped' && <option value="delivered">Delivered</option>}
-                          <option value="cancelled">Cancel</option>
-                        </select>
+                        <PermissionGuard permission="ecom_orders:manage">
+                          <select className="text-xs border rounded px-1 py-0.5" value="" onChange={e => e.target.value && updateStatus(o.id, e.target.value)}>
+                            <option value="">Update...</option>
+                            {o.status === 'pending' && <option value="confirmed">Confirm</option>}
+                            {o.status === 'confirmed' && <option value="processing">Processing</option>}
+                            {o.status === 'processing' && <option value="shipped">Ship</option>}
+                            {o.status === 'shipped' && <option value="delivered">Delivered</option>}
+                            <option value="cancelled">Cancel</option>
+                          </select>
+                        </PermissionGuard>
                       )}
                     </div>
                   </td>

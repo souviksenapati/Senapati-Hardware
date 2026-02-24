@@ -3,6 +3,7 @@ import { Save } from 'lucide-react';
 import { adminAPI, uploadAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({});
@@ -58,9 +59,11 @@ export default function AdminSettingsPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Store Settings</h1>
-        <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
-          <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Settings'}
-        </button>
+        <PermissionGuard permission="settings:manage">
+          <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </PermissionGuard>
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm max-w-2xl">

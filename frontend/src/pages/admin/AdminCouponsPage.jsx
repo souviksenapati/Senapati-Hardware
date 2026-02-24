@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { couponsAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
@@ -63,7 +64,9 @@ export default function AdminCouponsPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Coupons</h1>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Coupon</button>
+        <PermissionGuard permission="coupons:manage">
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Coupon</button>
+        </PermissionGuard>
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -72,10 +75,12 @@ export default function AdminCouponsPage() {
             <div key={c.id} className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-primary">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2"><Tag className="w-5 h-5 text-primary" /><span className="font-bold text-lg">{c.code}</span></div>
-                <div className="flex gap-2">
-                  <button onClick={() => openEdit(c)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                </div>
+                <PermissionGuard permission="coupons:manage">
+                  <div className="flex gap-2">
+                    <button onClick={() => openEdit(c)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </PermissionGuard>
               </div>
               <p className="text-sm text-gray-600 mt-2">
                 {c.discount_type === 'percentage' ? `${c.discount_value}% off` : `₹${c.discount_value} off`}
@@ -98,26 +103,26 @@ export default function AdminCouponsPage() {
           <div className="bg-white rounded-xl w-full max-w-lg p-6">
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Coupon' : 'Add Coupon'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div><label className="block text-sm font-medium mb-1">Code *</label><input className="input-field uppercase" value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} required /></div>
+              <div><label className="block text-sm font-medium mb-1">Code *</label><input className="input-field uppercase" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} required /></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-sm font-medium mb-1">Type</label>
-                  <select className="input-field" value={form.discount_type} onChange={e => setForm({...form, discount_type: e.target.value})}>
+                  <select className="input-field" value={form.discount_type} onChange={e => setForm({ ...form, discount_type: e.target.value })}>
                     <option value="percentage">Percentage</option><option value="fixed">Fixed Amount</option>
                   </select>
                 </div>
-                <div><label className="block text-sm font-medium mb-1">Value *</label><input type="number" className="input-field" value={form.discount_value} onChange={e => setForm({...form, discount_value: e.target.value})} required /></div>
+                <div><label className="block text-sm font-medium mb-1">Value *</label><input type="number" className="input-field" value={form.discount_value} onChange={e => setForm({ ...form, discount_value: e.target.value })} required /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Min Order (₹)</label><input type="number" className="input-field" value={form.min_order_amount} onChange={e => setForm({...form, min_order_amount: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium mb-1">Max Discount (₹)</label><input type="number" className="input-field" value={form.max_discount_amount} onChange={e => setForm({...form, max_discount_amount: e.target.value})} /></div>
+                <div><label className="block text-sm font-medium mb-1">Min Order (₹)</label><input type="number" className="input-field" value={form.min_order_amount} onChange={e => setForm({ ...form, min_order_amount: e.target.value })} /></div>
+                <div><label className="block text-sm font-medium mb-1">Max Discount (₹)</label><input type="number" className="input-field" value={form.max_discount_amount} onChange={e => setForm({ ...form, max_discount_amount: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Valid From</label><input type="date" className="input-field" value={form.valid_from} onChange={e => setForm({...form, valid_from: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium mb-1">Valid Until</label><input type="date" className="input-field" value={form.valid_until} onChange={e => setForm({...form, valid_until: e.target.value})} /></div>
+                <div><label className="block text-sm font-medium mb-1">Valid From</label><input type="date" className="input-field" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} /></div>
+                <div><label className="block text-sm font-medium mb-1">Valid Until</label><input type="date" className="input-field" value={form.valid_until} onChange={e => setForm({ ...form, valid_until: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Usage Limit</label><input type="number" className="input-field" value={form.usage_limit} onChange={e => setForm({...form, usage_limit: e.target.value})} /></div>
-                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} /> Active</label></div>
+                <div><label className="block text-sm font-medium mb-1">Usage Limit</label><input type="number" className="input-field" value={form.usage_limit} onChange={e => setForm({ ...form, usage_limit: e.target.value })} /></div>
+                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>

@@ -3,6 +3,7 @@ import { Search, Ban, CheckCircle } from 'lucide-react';
 import { adminAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -24,8 +25,8 @@ export default function AdminCustomersPage() {
       await adminAPI.toggleCustomer(id);
       toast.success('Customer status updated');
       fetchCustomers();
-    } catch (err) { 
-      toast.error(err.response?.data?.detail || 'Failed to update status'); 
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update status');
     }
   };
 
@@ -45,7 +46,9 @@ export default function AdminCustomersPage() {
               <th className="text-left p-3">Name</th><th className="text-left p-3">Email</th>
               <th className="text-left p-3">Phone</th><th className="text-left p-3">Orders</th>
               <th className="text-left p-3">Joined</th><th className="text-left p-3">Status</th>
-              <th className="text-left p-3">Actions</th>
+              <PermissionGuard permission="ecom_customers:manage">
+                <th className="text-left p-3">Actions</th>
+              </PermissionGuard>
             </tr></thead>
             <tbody>
               {customers.map(c => (
@@ -60,11 +63,13 @@ export default function AdminCustomersPage() {
                       {c.is_active ? 'Active' : 'Deactivated'}
                     </span>
                   </td>
-                  <td className="p-3">
-                    <button onClick={() => toggleStatus(c.id)} className={`text-sm ${c.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`} title={c.is_active ? 'Deactivate' : 'Activate'}>
-                      {c.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                    </button>
-                  </td>
+                  <PermissionGuard permission="ecom_customers:manage">
+                    <td className="p-3">
+                      <button onClick={() => toggleStatus(c.id)} className={`text-sm ${c.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`} title={c.is_active ? 'Deactivate' : 'Activate'}>
+                        {c.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                      </button>
+                    </td>
+                  </PermissionGuard>
                 </tr>
               ))}
             </tbody>

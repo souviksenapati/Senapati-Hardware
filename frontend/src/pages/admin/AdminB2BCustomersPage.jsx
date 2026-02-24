@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Users, Phone, Mail, MapPin, CreditCard, Tag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
-
+import PermissionGuard from '../../components/PermissionGuard';
 export default function AdminB2BCustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +39,7 @@ export default function AdminB2BCustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
-      const response = await api.get('/b2b-customers/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/b2b-customers/');
       setCustomers(response.data);
     } catch (error) {
       toast.error('Failed to fetch customers');
@@ -55,8 +52,6 @@ export default function AdminB2BCustomersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-
       const data = {
         ...formData,
         customer_code: formData.customer_code.toUpperCase(),
@@ -65,14 +60,10 @@ export default function AdminB2BCustomersPage() {
       };
 
       if (editingCustomer) {
-        await api.put(`/b2b-customers/${editingCustomer.id}`, data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/b2b-customers/${editingCustomer.id}`, data);
         toast.success('Customer updated successfully');
       } else {
-        await api.post('/b2b-customers/', data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post('/b2b-customers/', data);
         toast.success('Customer created successfully');
       }
 
@@ -88,10 +79,7 @@ export default function AdminB2BCustomersPage() {
     if (!confirm('Are you sure you want to delete this customer?')) return;
 
     try {
-      const token = sessionStorage.getItem('token');
-      await api.delete(`/b2b-customers/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/b2b-customers/${id}`);
       toast.success('Customer deleted successfully');
       fetchCustomers();
     } catch (error) {
@@ -166,13 +154,15 @@ export default function AdminB2BCustomersPage() {
           <h1 className="text-3xl font-bold text-gray-800">B2B Customer Management</h1>
           <p className="text-gray-600 mt-1">Manage wholesale and retail business customers</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus size={20} />
-          <span>Add Customer</span>
-        </button>
+        <PermissionGuard permission="b2b_customers:manage">
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus size={20} />
+            <span>Add Customer</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Search */}
@@ -207,7 +197,9 @@ export default function AdminB2BCustomersPage() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Price Tier</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <PermissionGuard permission="b2b_customers:manage">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </PermissionGuard>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -258,16 +250,18 @@ export default function AdminB2BCustomersPage() {
                       ₹{customer.current_balance?.toLocaleString('en-IN') || 0}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center space-x-2">
-                      <button onClick={() => handleEdit(customer)} className="text-blue-600 hover:text-blue-900">
-                        <Edit size={18} />
-                      </button>
-                      <button onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+                  <PermissionGuard permission="b2b_customers:manage">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center space-x-2">
+                        <button onClick={() => handleEdit(customer)} className="text-blue-600 hover:text-blue-900">
+                          <Edit size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </PermissionGuard>
                 </tr>
               ))}
             </tbody>

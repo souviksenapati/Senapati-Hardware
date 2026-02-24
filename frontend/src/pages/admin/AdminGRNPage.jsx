@@ -3,6 +3,7 @@ import { Plus, Search, Eye, Package } from 'lucide-react';
 import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminGRNPage() {
   const [grns, setGrns] = useState([]);
@@ -144,7 +145,7 @@ export default function AdminGRNPage() {
       setWarehouses(res.data.map(w => ({
         value: w.id,
         label: w.name,
-        description: w.location
+        description: w.city ? `${w.city}, ${w.state}` : undefined
       })));
     } catch (error) {
       console.error('Failed to fetch warehouses');
@@ -168,7 +169,7 @@ export default function AdminGRNPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await api.get('/categories/all');
+      const res = await api.get('/categories');
       setCategories(res.data.map(c => ({
         value: c.id,
         label: c.name,
@@ -182,6 +183,7 @@ export default function AdminGRNPage() {
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     try {
+      const slug = newProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const res = await api.post('/products', {
         ...newProduct,
         slug,
@@ -327,8 +329,6 @@ export default function AdminGRNPage() {
     }
 
     try {
-      const token = sessionStorage.getItem('token');
-
       // Clean up data: remove empty strings for optional fields
       const cleanedData = {
         ...formData,
@@ -408,13 +408,15 @@ export default function AdminGRNPage() {
           <h1 className="text-3xl font-bold text-gray-800">Goods Received Notes (GRN)</h1>
           <p className="text-gray-600 mt-1">Record material receipts and update inventory</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); resetForm(); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create GRN</span>
-        </button>
+        <PermissionGuard permission="grn:manage">
+          <button
+            onClick={() => { setShowForm(true); resetForm(); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create GRN</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {!showForm && (

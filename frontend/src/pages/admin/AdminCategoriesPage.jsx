@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 import { categoriesAPI, uploadAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -13,7 +14,7 @@ export default function AdminCategoriesPage() {
 
   const fetchCategories = () => {
     setLoading(true);
-    categoriesAPI.listAll()
+    categoriesAPI.list()
       .then(r => setCategories(r.data || []))
       .catch(() => toast.error('Failed to load categories'))
       .finally(() => setLoading(false));
@@ -43,7 +44,9 @@ export default function AdminCategoriesPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Categories ({categories.length})</h1>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Category</button>
+        <PermissionGuard permission="catalog:manage">
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Category</button>
+        </PermissionGuard>
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -57,8 +60,10 @@ export default function AdminCategoriesPage() {
                   <p className="text-xs text-gray-400 mt-2">{c.product_count || 0} products</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(c)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  <PermissionGuard permission="catalog:manage">
+                    <button onClick={() => openEdit(c)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  </PermissionGuard>
                 </div>
               </div>
             </div>

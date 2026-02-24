@@ -3,9 +3,13 @@ import { authAPI } from '../api';
 
 const AuthContext = createContext();
 
-// Mirror backend's PERMISSION_HIERARCHY — configurable implication map
+// Mirror backend's PERMISSION_HIERARCHY — must stay in sync with models.py
 const PERMISSION_HIERARCHY = {
-  manage: ['view'],  // manage implies view
+  manage: ['view', 'export'],  // manage implies view AND export
+  approve: ['view'],            // approve implies view
+  void: ['view'],               // void implies view
+  audit: ['view'],              // audit implies view
+  export: ['view'],             // export implies view — e.g. reports:export grants reports:view
 };
 
 // Non-customer roles allowed in the admin portal

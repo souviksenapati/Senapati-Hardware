@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Search, Image as ImageIcon, Upload } from 'lucide
 import { productsAPI, categoriesAPI, uploadAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
@@ -36,7 +37,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => { fetchProducts(); }, [page, search]);
   useEffect(() => {
-    categoriesAPI.listAll()
+    categoriesAPI.list()
       .then(r => setCategories(r.data || []))
       .catch(() => toast.error('Failed to load categories'));
   }, []);
@@ -156,7 +157,9 @@ export default function AdminProductsPage() {
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Products ({total})</h1>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Product</button>
+        <PermissionGuard permission="catalog:manage">
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Product</button>
+        </PermissionGuard>
       </div>
 
       {/* Search */}
@@ -172,7 +175,10 @@ export default function AdminProductsPage() {
             <thead className="bg-gray-50 border-b"><tr>
               <th className="text-left p-3">Product</th><th className="text-left p-3">Category</th>
               <th className="text-left p-3">Price</th><th className="text-left p-3">Stock</th>
-              <th className="text-left p-3">Status</th><th className="text-left p-3">Actions</th>
+              <th className="text-left p-3">Status</th>
+              <PermissionGuard permission="catalog:manage">
+                <th className="text-left p-3">Actions</th>
+              </PermissionGuard>
             </tr></thead>
             <tbody>
               {products.map(p => (
@@ -199,16 +205,18 @@ export default function AdminProductsPage() {
                       {p.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <label className="cursor-pointer text-gray-400 hover:text-blue-500">
-                        <ImageIcon className="w-4 h-4" />
-                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && handleImageUpload(p.id, e.target.files[0])} />
-                      </label>
-                      <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
+                  <PermissionGuard permission="catalog:manage">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer text-gray-400 hover:text-blue-500">
+                          <ImageIcon className="w-4 h-4" />
+                          <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && handleImageUpload(p.id, e.target.files[0])} />
+                        </label>
+                        <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(p.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </PermissionGuard>
                 </tr>
               ))}
             </tbody>

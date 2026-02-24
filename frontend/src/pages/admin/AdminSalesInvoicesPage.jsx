@@ -3,6 +3,9 @@ import { Plus, Search, Eye, FileText, Printer } from 'lucide-react';
 import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
+import PrintDownloadMenu from '../../components/PrintDownloadMenu';
+import { generateSalesInvoicePDF } from '../../utils/pdfGenerator';
 
 export default function AdminSalesInvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -273,8 +276,6 @@ export default function AdminSalesInvoicesPage() {
     }
 
     try {
-      const token = sessionStorage.getItem('token');
-
       // Clean up data: convert empty strings to null for optional date fields
       const cleanedData = {
         ...formData,
@@ -334,287 +335,6 @@ export default function AdminSalesInvoicesPage() {
     return str + 'Only';
   };
 
-  const handlePrintInvoice = async (invoice) => {
-    let settings = {};
-    try {
-      const res = await api.get('/admin/settings');
-      (res.data || []).forEach(item => { settings[item.key] = item.value; });
-    } catch (e) { console.error('Settings load fail', e); }
-
-    const items = invoice.items || [];
-
-    // Calculate GST Breakdown grouped by HSN
-    const hsnBreakdown = {};
-    items.forEach(item => {
-      const hsn = item.product?.hsn_code || 'N/A';
-      if (!hsnBreakdown[hsn]) {
-        hsnBreakdown[hsn] = { taxable: 0, cgst: 0, sgst: 0, igst: 0, rate: item.tax_percentage };
-      }
-      hsnBreakdown[hsn].taxable += parseFloat(item.taxable_amount || 0);
-      hsnBreakdown[hsn].cgst += parseFloat(item.cgst_amount || 0);
-      hsnBreakdown[hsn].sgst += parseFloat(item.sgst_amount || 0);
-      hsnBreakdown[hsn].igst += parseFloat(item.igst_amount || 0);
-    });
-
-    const rowsHtml = items.map((item, index) => `
-      <tr>
-        <td style="text-align:center;">${index + 1}</td>
-        <td>
-          <div style="font-weight:bold;">${item.product?.name || item.product_id || '-'}</div>
-        </td>
-        <td style="text-align:center;">${item.product?.hsn_code || 'N/A'}</td>
-        <td style="text-align:center;">${parseFloat(item.quantity).toFixed(0)} ${item.product?.unit || ''}</td>
-        <td style="text-align:right;">${parseFloat(item.unit_price).toFixed(2)}</td>
-        <td style="text-align:right;">${parseFloat(item.taxable_amount).toFixed(2)}</td>
-        <td style="text-align:center;">${parseFloat(item.tax_percentage).toFixed(2)}%</td>
-        <td style="text-align:right;">${parseFloat(item.cgst_amount || 0).toFixed(2)}</td>
-        <td style="text-align:right;">${parseFloat(item.sgst_amount || 0).toFixed(2)}</td>
-        <td style="text-align:right;">${parseFloat(item.igst_amount || 0).toFixed(2)}</td>
-        <td style="text-align:right;font-weight:bold;">${parseFloat(item.line_total).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    const hsnRowsHtml = Object.entries(hsnBreakdown).map(([hsn, data]) => `
-      <tr>
-        <td>${hsn}</td>
-        <td style="text-align:right;">${data.taxable.toFixed(2)}</td>
-        <td style="text-align:center;">${(data.rate / 2).toFixed(2)}%</td>
-        <td style="text-align:right;">${data.cgst.toFixed(2)}</td>
-        <td style="text-align:center;">${(data.rate / 2).toFixed(2)}%</td>
-        <td style="text-align:right;">${data.sgst.toFixed(2)}</td>
-        <td style="text-align:right;">${(data.cgst + data.sgst + data.igst).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    const upiLink = `upi://pay?pa=${settings.bank_upi || ''}&pn=${settings.store_name || ''}&am=${invoice.total}&cu=INR`;
-    const qrCodeUrl = `https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=${encodeURIComponent(upiLink)}`;
-
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Tax Invoice - ${invoice.invoice_number}</title>
-          <style>
-            @page { size: A4; margin: 5mm; }
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; color: #000; margin: 0; padding: 10px; border: 1px solid #000; }
-            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 0px; }
-            .header-table td { border: 1px solid #000; padding: 5px; vertical-align: top; width: 33.33%; }
-            .title { text-align: center; font-size: 16px; font-weight: bold; border: 1px solid #000; padding: 5px; background: #eee; }
-            .main-table { width: 100%; border-collapse: collapse; }
-            .main-table th { border: 1px solid #000; padding: 4px; background: #f2f2f2; font-size: 10px; }
-            .main-table td { border: 1px solid #000; padding: 4px; height: 20px; }
-            .gst-table { width: 60%; border-collapse: collapse; margin-top: 10px; }
-            .gst-table th, .gst-table td { border: 1px solid #000; padding: 3px; font-size: 9px; }
-            .footer-section { display: flex; border: 1px solid #000; border-top: 0; }
-            .footer-left { flex: 1; padding: 8px; border-right: 1px solid #000; }
-            .footer-right { width: 250px; padding: 8px; text-align: right; }
-            .na { color: #888; font-style: italic; }
-            .bold { font-weight: bold; }
-            .bank-details { font-size: 10px; line-height: 1.4; }
-          </style>
-        </head>
-        <body>
-          <div class="title">TAX INVOICE</div>
-          <table class="header-table">
-            <tr>
-              <td rowspan="2">
-                ${settings.store_logo_url ? `<img src="${settings.store_logo_url}" style="max-height:60px;margin-bottom:5px;"><br>` : ''}
-                <div class="bold" style="font-size:14px;">${settings.store_name || 'YOUR COMPANY NAME'}</div>
-                <div>${settings.store_address || ''}</div>
-                <div>GSTIN/UIN: <span class="bold">${settings.company_gstin || 'N/A'}</span></div>
-                <div>State Name: Bhubaneswar, Odisha, Code: 21</div>
-                <div>Contact: ${settings.store_phone || ''}</div>
-                <div>Email: ${settings.store_email || ''}</div>
-              </td>
-              <td>
-                <div>Invoice No.</div>
-                <div class="bold">${invoice.invoice_number}</div>
-              </td>
-              <td>
-                <div>Dated</div>
-                <div class="bold">${new Date(invoice.invoice_date).toLocaleDateString('en-GB')}</div>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div>Delivery Note</div>
-                <div class="bold">${invoice.delivery_note_no || 'N/A'}</div>
-              </td>
-              <td>
-                <div>Mode/Terms of Payment</div>
-                <div class="bold text-uppercase">${invoice.payment_terms.replace('_', ' ')}</div>
-              </td>
-            </tr>
-            <tr>
-              <td rowspan="2">
-                <div style="font-size:10px;color:#666;">Consignee (Ship to)</div>
-                <div class="bold">${invoice.consignee_name || (invoice.customer?.name || 'N/A')}</div>
-                <div>${invoice.consignee_address || (invoice.customer?.address_line1 || '')}</div>
-                <div>GSTIN/UIN: <span class="bold">${invoice.consignee_gstin || (invoice.customer?.gst_number || 'N/A')}</span></div>
-                <div>State Name: ${invoice.consignee_state || (invoice.customer?.state || 'N/A')}</div>
-              </td>
-              <td>
-                <div>Reference No. & Date.</div>
-                <div class="bold">N/A</div>
-              </td>
-              <td>
-                <div>Other References</div>
-                <div class="bold">N/A</div>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div>Buyer's Order No.</div>
-                <div class="bold">${invoice.buyer_order_no || 'N/A'}</div>
-              </td>
-              <td>
-                <div>Dated</div>
-                <div class="bold">N/A</div>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <div style="font-size:10px;color:#666;">Buyer (Bill to)</div>
-                <div class="bold">${invoice.customer?.name || 'N/A'}</div>
-                <div>${invoice.customer?.address_line1 || ''}</div>
-                <div>GSTIN/UIN: <span class="bold">${invoice.customer?.gst_number || 'N/A'}</span></div>
-                <div>State Name: ${invoice.customer?.state || 'N/A'}</div>
-              </td>
-              <td>
-                <div>Dispatch Doc No.</div>
-                <div class="bold">N/A</div>
-              </td>
-              <td>
-                <div>Delivery Note Date</div>
-                <div class="bold">N/A</div>
-              </td>
-            </tr>
-            <tr>
-              <td></td>
-              <td>
-                <div>Dispatched through</div>
-                <div class="bold">N/A</div>
-              </td>
-              <td>
-                <div>Destination</div>
-                <div class="bold">N/A</div>
-              </td>
-            </tr>
-          </table>
-
-          <table class="main-table">
-            <thead>
-              <tr>
-                <th width="30">SI No.</th>
-                <th>Description of Goods</th>
-                <th>HSN/SAC</th>
-                <th>Quantity</th>
-                <th>Rate</th>
-                <th>Taxable Value</th>
-                <th>GST %</th>
-                <th>CGST</th>
-                <th>SGST</th>
-                <th>IGST</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-              <!-- Fill empty rows to maintain height -->
-              ${Array(Math.max(0, 8 - items.length)).fill(0).map(() => '<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
-              <tr class="bold">
-                <td colspan="3" style="text-align:right;">Total</td>
-                <td style="text-align:center;">${items.reduce((sum, i) => sum + parseFloat(i.quantity), 0).toFixed(0)}</td>
-                <td></td>
-                <td style="text-align:right;">${parseFloat(invoice.subtotal).toFixed(2)}</td>
-                <td></td>
-                <td style="text-align:right;">${parseFloat(invoice.cgst_amount).toFixed(2)}</td>
-                <td style="text-align:right;">${parseFloat(invoice.sgst_amount).toFixed(2)}</td>
-                <td style="text-align:right;">${parseFloat(invoice.igst_amount).toFixed(2)}</td>
-                <td style="text-align:right;">${parseFloat(invoice.total).toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div style="border:1px solid #000; border-top:0; padding:5px;">
-            <div>Amount Chargeable (in words)</div>
-            <div class="bold">INR ${numberToWords(Math.round(invoice.total))}</div>
-          </div>
-
-          <table class="gst-table">
-            <thead>
-              <tr>
-                <th rowspan="2">HSN/SAC</th>
-                <th rowspan="2">Taxable Value</th>
-                <th colspan="2">Central Tax</th>
-                <th colspan="2">State Tax</th>
-                <th rowspan="2">Total Tax Amount</th>
-              </tr>
-              <tr>
-                <th>Rate</th>
-                <th>Amount</th>
-                <th>Rate</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${hsnRowsHtml}
-              <tr class="bold">
-                <td>Total</td>
-                <td style="text-align:right;">${parseFloat(invoice.subtotal).toFixed(2)}</td>
-                <td></td>
-                <td style="text-align:right;">${parseFloat(invoice.cgst_amount).toFixed(2)}</td>
-                <td></td>
-                <td style="text-align:right;">${parseFloat(invoice.sgst_amount).toFixed(2)}</td>
-                <td style="text-align:right;">${(parseFloat(invoice.cgst_amount) + parseFloat(invoice.sgst_amount)).toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div style="margin-top:5px; font-size:9px;">Tax Amount (in words) : <span class="bold">INR ${numberToWords(Math.round(parseFloat(invoice.cgst_amount) + parseFloat(invoice.sgst_amount) + parseFloat(invoice.igst_amount)))}</span></div>
-
-          <div class="footer-section" style="margin-top:10px;">
-            <div class="footer-left">
-              <div class="bold">Company's Bank Details</div>
-              <div class="bank-details">
-                Bank Name: <span class="bold">${settings.bank_name || 'N/A'}</span><br>
-                A/c No.: <span class="bold">${settings.bank_account_no || 'N/A'}</span><br>
-                Branch & IFSC Code: <span class="bold">${settings.bank_branch || ''} & ${settings.bank_ifsc || ''}</span>
-              </div>
-              <div style="margin-top: 10px;">
-                <div class="bold" style="text-decoration:underline;">Declaration</div>
-                <div style="font-size:9px;">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
-              </div>
-              <div style="margin-top: 10px; font-size: 10px;">
-                <b>PAN No:</b> ${settings.company_pan || 'N/A'}
-              </div>
-            </div>
-            <div class="footer-right">
-              <img src="${qrCodeUrl}" style="margin-bottom:5px;"><br>
-              <div style="font-size:9px;">for ${settings.store_name || 'YOUR COMPANY NAME'}</div>
-              <div style="margin-top:40px; position: relative;">
-                ${settings.signature_stamp_url ? `<img src="${settings.signature_stamp_url}" style="position:absolute; bottom:0; right:0; max-height:60px; opacity:0.8;">` : ''}
-                <div style="margin-top:50px;" class="bold">Authorized Signatory</div>
-              </div>
-            </div>
-          </div>
-          <div style="text-align:center; font-size:10px; margin-top:5px;">This is a Computer Generated Invoice</div>
-          
-          <script>
-            window.onload = function() { 
-              setTimeout(() => {
-                window.print();
-                window.close(); 
-              }, 800);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-  };
-
   const resetForm = () => {
     setFormData({
       invoice_number: '',
@@ -667,13 +387,15 @@ export default function AdminSalesInvoicesPage() {
           <h1 className="text-3xl font-bold text-gray-800">Sales Invoices</h1>
           <p className="text-gray-600 mt-1">Manage B2B sales invoices with GST</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); resetForm(); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create Invoice</span>
-        </button>
+        <PermissionGuard permission="sales_invoices:manage">
+          <button
+            onClick={() => { setShowForm(true); resetForm(); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Invoice</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {!showForm && (
@@ -703,7 +425,7 @@ export default function AdminSalesInvoicesPage() {
             </select>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-visible">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -729,26 +451,31 @@ export default function AdminSalesInvoicesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <select
-                        value={inv.status || 'draft'}
-                        onChange={(e) => handleUpdateInvoiceStatus(inv.id, e.target.value)}
-                        className="border rounded px-2 py-1 text-xs"
-                      >
-                        <option value="draft">DRAFT</option>
-                        <option value="sent">SENT</option>
-                        <option value="partially_paid">PARTIALLY PAID</option>
-                        <option value="paid">PAID</option>
-                        <option value="overdue">OVERDUE</option>
-                      </select>
+                      <PermissionGuard permission="sales_invoices:manage" fallback={<span className="text-xs px-2 py-1 bg-gray-100 rounded">{inv.status?.toUpperCase()}</span>}>
+                        <select
+                          value={inv.status || 'draft'}
+                          onChange={(e) => handleUpdateInvoiceStatus(inv.id, e.target.value)}
+                          className="border rounded px-2 py-1 text-xs"
+                        >
+                          <option value="draft">DRAFT</option>
+                          <option value="sent">SENT</option>
+                          <option value="partially_paid">PARTIALLY PAID</option>
+                          <option value="paid">PAID</option>
+                          <option value="overdue">OVERDUE</option>
+                        </select>
+                      </PermissionGuard>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <button type="button" onClick={() => setSelectedInvoice(inv)} className="text-blue-600 hover:text-blue-800">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button type="button" onClick={() => handlePrintInvoice(inv)} className="text-gray-600 hover:text-gray-800">
-                          <Printer className="w-4 h-4" />
-                        </button>
+                        <PermissionGuard permission="sales_invoices:export">
+                          <PrintDownloadMenu
+                            documentGenerator={() => generateSalesInvoicePDF(inv)}
+                            fileName={`Invoice-${inv.invoice_number}.pdf`}
+                          />
+                        </PermissionGuard>
                       </div>
                     </td>
                   </tr>

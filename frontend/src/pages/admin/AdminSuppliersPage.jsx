@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Star, Phone, Mail, MapPin, Building, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
-
+import PermissionGuard from '../../components/PermissionGuard';
 export default function AdminSuppliersPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,10 +41,7 @@ export default function AdminSuppliersPage() {
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
-      const response = await api.get('/suppliers/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/suppliers/');
       setSuppliers(response.data);
     } catch (error) {
       toast.error('Failed to fetch suppliers');
@@ -57,8 +54,6 @@ export default function AdminSuppliersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-
       const data = {
         ...formData,
         supplier_code: formData.supplier_code.toUpperCase(),
@@ -68,14 +63,10 @@ export default function AdminSuppliersPage() {
       };
 
       if (editingSupplier) {
-        await api.put(`/suppliers/${editingSupplier.id}`, data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/suppliers/${editingSupplier.id}`, data);
         toast.success('Supplier updated successfully');
       } else {
-        await api.post('/suppliers/', data, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post('/suppliers/', data);
         toast.success('Supplier created successfully');
       }
 
@@ -91,10 +82,7 @@ export default function AdminSuppliersPage() {
     if (!confirm('Are you sure you want to delete this supplier?')) return;
 
     try {
-      const token = sessionStorage.getItem('token');
-      await api.delete(`/suppliers/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/suppliers/${id}`);
       toast.success('Supplier deleted successfully');
       fetchSuppliers();
     } catch (error) {
@@ -173,13 +161,15 @@ export default function AdminSuppliersPage() {
           <h1 className="text-3xl font-bold text-gray-800">Supplier Management</h1>
           <p className="text-gray-600 mt-1">Manage your suppliers and vendor details</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus size={20} />
-          <span>Add Supplier</span>
-        </button>
+        <PermissionGuard permission="suppliers:manage">
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus size={20} />
+            <span>Add Supplier</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Search */}
@@ -214,7 +204,9 @@ export default function AdminSuppliersPage() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Terms</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <PermissionGuard permission="suppliers:manage">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </PermissionGuard>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -264,22 +256,24 @@ export default function AdminSuppliersPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(supplier)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(supplier.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+                  <PermissionGuard permission="suppliers:manage">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(supplier)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(supplier.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </PermissionGuard>
                 </tr>
               ))}
             </tbody>

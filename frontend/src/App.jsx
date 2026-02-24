@@ -1,6 +1,9 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import StoreLayout from './layouts/StoreLayout';
 import AdminLayout from './layouts/AdminLayout';
+import { useAuth } from './context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 // Store Pages
 import HomePage from './pages/store/HomePage';
@@ -52,6 +55,37 @@ import AdminSalesQuotationsPage from './pages/admin/AdminSalesQuotationsPage';
 import AdminSalesOrdersPage from './pages/admin/AdminSalesOrdersPage';
 import AdminSalesInvoicesPage from './pages/admin/AdminSalesInvoicesPage';
 
+
+/**
+ * PermissionRoute — Page-level permission gate for admin routes.
+ *
+ * Checks if the current user has the required permission.
+ * If not, redirects to /admin (dashboard) and shows an access denied toast.
+ * This works in concert with AdminLayout's isStaff check (first line of defence).
+ *
+ * @param {string} permission - The permission key required to access this page.
+ * @param {React.ReactNode} children - The page component to render if permitted.
+ */
+function PermissionRoute({ permission, children }) {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (permission && !hasPermission(permission)) {
+      toast.error(`Access denied: '${permission}' permission required`);
+      navigate('/admin', { replace: true });
+    }
+  }, [permission, hasPermission, navigate]);
+
+  if (permission && !hasPermission(permission)) {
+    // Render nothing while the effect fires the redirect
+    return null;
+  }
+
+  return children;
+}
+
+
 export default function App() {
   return (
     <Routes>
@@ -82,31 +116,43 @@ export default function App() {
       {/* Admin Portal Specific Login (No Store Layout) */}
       <Route path="/admin/login" element={<AdminLoginPage />} />
 
-      {/* Admin Portal Routes (with Sidebar) */}
+      {/* Admin Portal Routes (with Sidebar) — protected by AdminLayout first, then PermissionRoute per page */}
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="products" element={<AdminProductsPage />} />
-        <Route path="categories" element={<AdminCategoriesPage />} />
-        <Route path="orders" element={<AdminOrdersPage />} />
-        <Route path="customers" element={<AdminCustomersPage />} />
-        <Route path="staff" element={<AdminStaffPage />} />
-        <Route path="coupons" element={<AdminCouponsPage />} />
-        <Route path="banners" element={<AdminBannersPage />} />
-        <Route path="reviews" element={<AdminReviewsPage />} />
-        <Route path="inventory" element={<AdminInventoryPage />} />
-        <Route path="inventory-transactions" element={<AdminInwardsOutwardsPage />} />
-        <Route path="settings" element={<AdminSettingsPage />} />
-        <Route path="reports" element={<AdminReportsPage />} />
-        {/* Inventory Management Routes */}
-        <Route path="suppliers" element={<AdminSuppliersPage />} />
-        <Route path="b2b-customers" element={<AdminB2BCustomersPage />} />
-        <Route path="warehouses" element={<AdminWarehousesPage />} />
-        <Route path="purchase-orders" element={<AdminPurchaseOrdersPage />} />
-        <Route path="grn" element={<AdminGRNPage />} />
-        <Route path="purchase-invoices" element={<AdminPurchaseInvoicesPage />} />
-        <Route path="sales-quotations" element={<AdminSalesQuotationsPage />} />
-        <Route path="sales-orders" element={<AdminSalesOrdersPage />} />
-        <Route path="sales-invoices" element={<AdminSalesInvoicesPage />} />
+        {/* Dashboard — accessible to all authenticated staff */}
+        <Route index element={<PermissionRoute permission="dashboard:view"><DashboardPage /></PermissionRoute>} />
+
+        {/* E-commerce */}
+        <Route path="products" element={<PermissionRoute permission="catalog:view"><AdminProductsPage /></PermissionRoute>} />
+        <Route path="categories" element={<PermissionRoute permission="catalog:view"><AdminCategoriesPage /></PermissionRoute>} />
+        <Route path="orders" element={<PermissionRoute permission="ecom_orders:view"><AdminOrdersPage /></PermissionRoute>} />
+        <Route path="customers" element={<PermissionRoute permission="ecom_customers:view"><AdminCustomersPage /></PermissionRoute>} />
+
+        {/* Staff & System */}
+        <Route path="staff" element={<PermissionRoute permission="staff:view"><AdminStaffPage /></PermissionRoute>} />
+        <Route path="settings" element={<PermissionRoute permission="settings:view"><AdminSettingsPage /></PermissionRoute>} />
+        <Route path="reports" element={<PermissionRoute permission="reports:view"><AdminReportsPage /></PermissionRoute>} />
+
+        {/* Marketing */}
+        <Route path="coupons" element={<PermissionRoute permission="coupons:view"><AdminCouponsPage /></PermissionRoute>} />
+        <Route path="banners" element={<PermissionRoute permission="banners:view"><AdminBannersPage /></PermissionRoute>} />
+        <Route path="reviews" element={<PermissionRoute permission="reviews:view"><AdminReviewsPage /></PermissionRoute>} />
+
+        {/* Inventory */}
+        <Route path="inventory" element={<PermissionRoute permission="stock:view"><AdminInventoryPage /></PermissionRoute>} />
+        <Route path="inventory-transactions" element={<PermissionRoute permission="stock:audit"><AdminInwardsOutwardsPage /></PermissionRoute>} />
+        <Route path="warehouses" element={<PermissionRoute permission="warehouses:view"><AdminWarehousesPage /></PermissionRoute>} />
+
+        {/* Purchase Module */}
+        <Route path="suppliers" element={<PermissionRoute permission="suppliers:view"><AdminSuppliersPage /></PermissionRoute>} />
+        <Route path="purchase-orders" element={<PermissionRoute permission="purchase_orders:view"><AdminPurchaseOrdersPage /></PermissionRoute>} />
+        <Route path="grn" element={<PermissionRoute permission="grn:view"><AdminGRNPage /></PermissionRoute>} />
+        <Route path="purchase-invoices" element={<PermissionRoute permission="purchase_invoices:view"><AdminPurchaseInvoicesPage /></PermissionRoute>} />
+
+        {/* Sales Module */}
+        <Route path="b2b-customers" element={<PermissionRoute permission="b2b_customers:view"><AdminB2BCustomersPage /></PermissionRoute>} />
+        <Route path="sales-quotations" element={<PermissionRoute permission="sales_quotations:view"><AdminSalesQuotationsPage /></PermissionRoute>} />
+        <Route path="sales-orders" element={<PermissionRoute permission="sales_orders:view"><AdminSalesOrdersPage /></PermissionRoute>} />
+        <Route path="sales-invoices" element={<PermissionRoute permission="sales_invoices:view"><AdminSalesInvoicesPage /></PermissionRoute>} />
       </Route>
 
       {/* 404 */}

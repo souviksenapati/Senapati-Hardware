@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { bannersAPI, uploadAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState([]);
@@ -11,12 +12,12 @@ export default function AdminBannersPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ title: '', subtitle: '', image_url: '', link_url: '', sort_order: '0', is_active: true });
 
-  const fetchBanners = () => { 
-    setLoading(true); 
-    bannersAPI.listAll()
+  const fetchBanners = () => {
+    setLoading(true);
+    bannersAPI.list()
       .then(r => setBanners(r.data || []))
       .catch(() => toast.error('Failed to load banners'))
-      .finally(() => setLoading(false)); 
+      .finally(() => setLoading(false));
   };
   useEffect(() => { fetchBanners(); }, []);
 
@@ -52,7 +53,9 @@ export default function AdminBannersPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Banners & Offers</h1>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Banner</button>
+        <PermissionGuard permission="banners:manage">
+          <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Banner</button>
+        </PermissionGuard>
       </div>
 
       {loading ? <LoadingSpinner /> : (
@@ -71,8 +74,12 @@ export default function AdminBannersPage() {
                     <span className={`${b.is_active ? 'text-green-500' : 'text-gray-300'}`}>
                       {b.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </span>
-                    <button onClick={() => openEdit(b)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(b.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <PermissionGuard permission="banners:manage">
+                      <>
+                        <button onClick={() => openEdit(b)} className="text-gray-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(b.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      </>
+                    </PermissionGuard>
                   </div>
                 </div>
               </div>
@@ -87,19 +94,19 @@ export default function AdminBannersPage() {
           <div className="bg-white rounded-xl w-full max-w-md p-6">
             <h2 className="text-xl font-bold mb-4">{editing ? 'Edit Banner' : 'Add Banner'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div><label className="block text-sm font-medium mb-1">Title *</label><input className="input-field" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required /></div>
-              <div><label className="block text-sm font-medium mb-1">Subtitle</label><input className="input-field" value={form.subtitle} onChange={e => setForm({...form, subtitle: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1">Title *</label><input className="input-field" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required /></div>
+              <div><label className="block text-sm font-medium mb-1">Subtitle</label><input className="input-field" value={form.subtitle} onChange={e => setForm({ ...form, subtitle: e.target.value })} /></div>
               <div>
                 <label className="block text-sm font-medium mb-1">Image</label>
-                <input className="input-field" placeholder="Image URL" value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} />
+                <input className="input-field" placeholder="Image URL" value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} />
                 <label className="text-xs text-primary cursor-pointer hover:underline mt-1 inline-block">
                   Or upload an image <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} />
                 </label>
               </div>
-              <div><label className="block text-sm font-medium mb-1">Link URL</label><input className="input-field" value={form.link_url} onChange={e => setForm({...form, link_url: e.target.value})} /></div>
+              <div><label className="block text-sm font-medium mb-1">Link URL</label><input className="input-field" value={form.link_url} onChange={e => setForm({ ...form, link_url: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Sort Order</label><input type="number" className="input-field" value={form.sort_order} onChange={e => setForm({...form, sort_order: e.target.value})} /></div>
-                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} /> Active</label></div>
+                <div><label className="block text-sm font-medium mb-1">Sort Order</label><input type="number" className="input-field" value={form.sort_order} onChange={e => setForm({ ...form, sort_order: e.target.value })} /></div>
+                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /> Active</label></div>
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>

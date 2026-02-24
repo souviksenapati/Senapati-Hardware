@@ -4,6 +4,9 @@ import { Plus, Search, Eye, Printer, X, CheckCircle } from 'lucide-react';
 import api from '../../api';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../../components/SearchableDropdown';
+import PermissionGuard from '../../components/PermissionGuard';
+import PrintDownloadMenu from '../../components/PrintDownloadMenu';
+import { generateSalesQuotationPDF } from '../../utils/pdfGenerator';
 
 export default function AdminSalesQuotationsPage() {
   const navigate = useNavigate();
@@ -53,7 +56,7 @@ export default function AdminSalesQuotationsPage() {
       setQuotations(res.data);
     } catch (error) {
       console.error('Failed to fetch quotations:', error);
-      alert('Failed to load sales quotations');
+      toast.error('Failed to load sales quotations');
     }
     setLoading(false);
   };
@@ -286,9 +289,11 @@ export default function AdminSalesQuotationsPage() {
           <h1 className="text-2xl font-bold text-gray-800">Sales Quotations</h1>
           <p className="text-sm text-gray-600">Create and manage customer quotations</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" /> New Quotation
-        </button>
+        <PermissionGuard permission="sales_quotations:manage">
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-5 h-5" /> New Quotation
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Filters */}
@@ -316,7 +321,7 @@ export default function AdminSalesQuotationsPage() {
       </div>
 
       {/* Quotations Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <table className="w-full">
           <thead className="bg-gray-100 border-b">
             <tr>
@@ -343,34 +348,53 @@ export default function AdminSalesQuotationsPage() {
                   <td className="p-4">{quot.valid_until ? new Date(quot.valid_until).toLocaleDateString() : '-'}</td>
                   <td className="p-4 text-right font-semibold">₹{parseFloat(quot.total || 0).toFixed(2)}</td>
                   <td className="p-4">
-                    <select
-                      value={quot.status || 'draft'}
-                      onChange={(e) => handleUpdateQuotationStatus(quot.id, e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
+                    <PermissionGuard
+                      permission="sales_quotations:manage"
+                      fallback={
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${quot.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                          quot.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                            quot.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              quot.status === 'expired' ? 'bg-orange-100 text-orange-700' :
+                                'bg-gray-100 text-gray-700'
+                          }`}>
+                          {(quot.status || 'draft').toUpperCase()}
+                        </span>
+                      }
                     >
-                      <option value="draft">DRAFT</option>
-                      <option value="sent">SENT</option>
-                      <option value="accepted">ACCEPTED</option>
-                      <option value="rejected">REJECTED</option>
-                      <option value="expired">EXPIRED</option>
-                    </select>
+                      <select
+                        value={quot.status || 'draft'}
+                        onChange={(e) => handleUpdateQuotationStatus(quot.id, e.target.value)}
+                        className="border rounded px-2 py-1 text-xs"
+                      >
+                        <option value="draft">DRAFT</option>
+                        <option value="sent">SENT</option>
+                        <option value="accepted">ACCEPTED</option>
+                        <option value="rejected">REJECTED</option>
+                        <option value="expired">EXPIRED</option>
+                      </select>
+                    </PermissionGuard>
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex justify-center gap-2">
                       <button type="button" onClick={() => setSelectedQuotation(quot)} className="text-blue-600 hover:text-blue-800" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
-                      <button type="button" onClick={() => window.print()} className="text-gray-600 hover:text-gray-800" title="Print">
-                        <Printer className="w-5 h-5" />
-                      </button>
+                      <PermissionGuard permission="sales_quotations:export">
+                        <PrintDownloadMenu
+                          documentGenerator={() => generateSalesQuotationPDF(quot)}
+                          fileName={`Quotation-${quot.quotation_number}.pdf`}
+                        />
+                      </PermissionGuard>
                       {quot.status === 'sent' && (
-                        <button
-                          onClick={() => convertToOrder(quot.id)}
-                          className="text-green-600 hover:text-green-800"
-                          title="Convert to Order"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
+                        <PermissionGuard permission="sales_quotations:manage">
+                          <button
+                            onClick={() => convertToOrder(quot.id)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Convert to Order"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                          </button>
+                        </PermissionGuard>
                       )}
                     </div>
                   </td>

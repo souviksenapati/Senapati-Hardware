@@ -3,6 +3,7 @@ import { Plus, Download, Filter, TrendingUp, TrendingDown } from 'lucide-react';
 import { adminAPI, productsAPI } from '../../api';
 import { LoadingSpinner } from '../../components/UI';
 import toast from 'react-hot-toast';
+import PermissionGuard from '../../components/PermissionGuard';
 
 export default function AdminInventoryTransactionsPage() {
   const [transactions, setTransactions] = useState([]);
@@ -30,7 +31,7 @@ export default function AdminInventoryTransactionsPage() {
   };
 
   const fetchProducts = () => {
-    productsAPI.list({ page_size: 1000 })
+    productsAPI.list({ page_size: 100 })
       .then(r => setProducts(r.data.products || []))
       .catch(() => { });
   };
@@ -83,9 +84,11 @@ export default function AdminInventoryTransactionsPage() {
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Inventory Transactions</h1>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Transaction
-        </button>
+        <PermissionGuard permission="stock:manage">
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Transaction
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Stats */}
@@ -157,10 +160,10 @@ export default function AdminInventoryTransactionsPage() {
                   <td className="p-3 font-medium">{t.product_name || t.product?.name || 'N/A'}</td>
                   <td className="p-3">
                     <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${t.transaction_type === 'inward'
-                        ? 'bg-green-100 text-green-700'
-                        : t.transaction_type === 'outward'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
+                      ? 'bg-green-100 text-green-700'
+                      : t.transaction_type === 'outward'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
                       }`}>
                       {t.transaction_type === 'inward' && <TrendingUp className="w-3 h-3" />}
                       {t.transaction_type === 'outward' && <TrendingDown className="w-3 h-3" />}

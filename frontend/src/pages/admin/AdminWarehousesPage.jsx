@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Warehouse as WarehouseIcon, MapPin, Phone, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
-
+import PermissionGuard from '../../components/PermissionGuard';
 export default function AdminWarehousesPage() {
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +29,7 @@ export default function AdminWarehousesPage() {
   const fetchWarehouses = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
-      const response = await api.get('/warehouses/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/warehouses/');
       setWarehouses(response.data);
     } catch (error) {
       toast.error('Failed to fetch warehouses');
@@ -44,17 +41,11 @@ export default function AdminWarehousesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
-
       if (editingWarehouse) {
-        await api.put(`/warehouses/${editingWarehouse.id}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/warehouses/${editingWarehouse.id}`, formData);
         toast.success('Warehouse updated successfully');
       } else {
-        await api.post('/warehouses/', formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post('/warehouses/', formData);
         toast.success('Warehouse created successfully');
       }
 
@@ -70,10 +61,7 @@ export default function AdminWarehousesPage() {
     if (!confirm('Are you sure you want to delete this warehouse?')) return;
 
     try {
-      const token = sessionStorage.getItem('token');
-      await api.delete(`/warehouses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/warehouses/${id}`);
       toast.success('Warehouse deleted successfully');
       fetchWarehouses();
     } catch (error) {
@@ -127,13 +115,15 @@ export default function AdminWarehousesPage() {
           <h1 className="text-3xl font-bold text-gray-800">Warehouse Management</h1>
           <p className="text-gray-600 mt-1">Manage warehouse locations and inventory points</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
-        >
-          <Plus size={20} />
-          <span>Add Warehouse</span>
-        </button>
+        <PermissionGuard permission="warehouses:manage">
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 shadow-md transition"
+          >
+            <Plus size={20} />
+            <span>Add Warehouse</span>
+          </button>
+        </PermissionGuard>
       </div>
 
       {/* Search */}
@@ -197,22 +187,24 @@ export default function AdminWarehousesPage() {
                 )}
               </div>
 
-              <div className="flex items-center space-x-2 pt-4 border-t">
-                <button
-                  onClick={() => handleEdit(warehouse)}
-                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center justify-center space-x-2"
-                >
-                  <Edit size={16} />
-                  <span>Edit</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(warehouse.id)}
-                  className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center justify-center space-x-2"
-                >
-                  <Trash2 size={16} />
-                  <span>Delete</span>
-                </button>
-              </div>
+              <PermissionGuard permission="warehouses:manage">
+                <div className="flex items-center space-x-2 pt-4 border-t">
+                  <button
+                    onClick={() => handleEdit(warehouse)}
+                    className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition flex items-center justify-center space-x-2"
+                  >
+                    <Edit size={16} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(warehouse.id)}
+                    className="flex-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center justify-center space-x-2"
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </PermissionGuard>
             </div>
           ))}
 

@@ -37,7 +37,7 @@ export default function AdminInwardsOutwardsPage() {
   };
 
   const fetchProducts = () => {
-    productsAPI.list({ page_size: 500 })
+    productsAPI.list({ page_size: 100 })
       .then(r => setProducts(r.data.products || []))
       .catch(() => { });
   };
@@ -221,8 +221,8 @@ export default function AdminInwardsOutwardsPage() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === f
-                ? 'bg-primary-600 text-white shadow-md'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? 'bg-primary-600 text-white shadow-md'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -256,8 +256,8 @@ export default function AdminInwardsOutwardsPage() {
                   </td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${inv.transaction_type === 'inward'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-primary-100 text-primary-700'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-primary-100 text-primary-700'
                       }`}>
                       {inv.transaction_type === 'inward' ? '↓ Inward' : '↑ Outward'}
                     </span>

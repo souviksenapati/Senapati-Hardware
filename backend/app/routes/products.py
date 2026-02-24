@@ -100,6 +100,18 @@ def update_product(product_id: str, req: ProductUpdate, admin=Depends(require_pe
     if not product:
         raise HTTPException(404, "Product not found")
 
+    # Uniqueness checks
+    if req.sku:
+        req.sku = req.sku.upper()
+        existing = db.query(Product).filter(Product.sku == req.sku, Product.id != product_id).first()
+        if existing:
+            raise HTTPException(400, "SKU already exists")
+    
+    if req.slug:
+        existing = db.query(Product).filter(Product.slug == req.slug, Product.id != product_id).first()
+        if existing:
+            raise HTTPException(400, "Slug already exists")
+
     for field, value in req.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
     db.commit()

@@ -49,7 +49,7 @@ const links = [
     items: [
       { to: '/admin/inventory', icon: Package, label: 'Stock Levels', description: 'Real-time overview of current inventory availability', requiredPermission: 'stock:view' },
       { to: '/admin/warehouses', icon: MapPin, label: 'Warehouses', description: 'Manage multiple storage locations and distributions', requiredPermission: 'warehouses:view' },
-      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Log of all stock movements for audit trails', requiredPermission: 'stock:view' },
+      { to: '/admin/inventory-transactions', icon: ArrowLeftRight, label: 'Inwards/Outwards', description: 'Log of all stock movements for audit trails', requiredPermission: 'stock:audit' },
     ]
   },
 
